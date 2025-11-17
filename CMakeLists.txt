@@ -35,7 +35,10 @@ add_executable(Mappeoppgave main.cpp
         include/trees.h
         include/turret.hpp
         include/CollisionDetection.hpp
-        include/bears.hpp)
+        include/bears.hpp
+        include/bullet.hpp
+        include/GameObject.hpp
+        include/Game.hpp)
 
 target_link_libraries(Mappeoppgave PRIVATE MappeoppgaveLib)
 

@@ -46,6 +46,8 @@ void KeyController::update(float dt) {
     float dirX = -std::sin(object_->rotation.y);
     float dirZ = -std::cos(object_->rotation.y);
 
+
+
     Vector3 newPos = object_->position;
     newPos.x += dirX * velocity_ * dt;
     newPos.z += dirZ * velocity_ * dt;
@@ -55,4 +57,13 @@ void KeyController::update(float dt) {
     } else {
         velocity_ = 0.0f;
     }
+}
+float KeyController::getSpeed() const {
+    return velocity_;
+}
+float KeyController::getRotation() const {
+    float rotation = 0.0f;
+    if (keyState_.left) rotation += 1.0f;
+    if (keyState_.right) rotation -= 1.0f;
+    return rotation;
 }

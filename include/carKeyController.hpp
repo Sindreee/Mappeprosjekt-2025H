@@ -14,6 +14,8 @@ public:
     void onKeyReleased(threepp::KeyEvent evt) override;
     void update(float dt);
 
+    float getSpeed() const;
+    float getRotation() const;
 private:
     threepp::Object3D* object_;
     CollisionDetection* collisionDetection_;
@@ -22,6 +24,7 @@ private:
     float friction_;
     float turnSpeed_;
     float velocity_ = 0.0f;
+
 
     struct KeyState {
         bool left = false;
