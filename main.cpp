@@ -106,6 +106,7 @@ int main() {
 
 
 
+
     // Create blur overlay
     // Create blur overlay as orthographic overlay (not attached to camera)
     auto orthoCamera = OrthographicCamera::create(-1, 1, 1, -1, 0, 1);
