@@ -14,7 +14,7 @@
 
 using namespace threepp;
 
-
+//dette er første forsøk på å lage en independent branch
 
 void updateCameraFollow(PerspectiveCamera& camera, Object3D& target, float offsetDistance = 15.0f, float offsetHeight = 3.0f, float smoothing = 0.1f) {
     static float smoothedRotation = 0.0f;
