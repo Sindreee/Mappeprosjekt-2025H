@@ -2,11 +2,6 @@
 // Created by sindr on 11/10/2025.
 //
 
-#include "turret.hpp"
-#include <threepp/loaders/AssimpLoader.hpp>
-#include <stdexcept>
-
-using namespace threepp;
 
 #include "turret.hpp"
 #include <threepp/loaders/AssimpLoader.hpp>

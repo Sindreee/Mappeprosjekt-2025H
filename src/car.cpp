@@ -75,22 +75,23 @@ void Car::update(float deltaTime) {
     // Calculate rotation from turning (tank-like controls)
     float turnRotation = rotation_ * deltaTime * 0.05f;
 
-    // Left wheels: forward speed minus turn (turning subtracts from left)
+    // Left wheels: forward speed minus turn (turning left = wheels go backward)
     float leftWheelDelta = speedRotation - turnRotation;
 
-    // Right wheels: forward speed plus turn (turning adds to right)
+    // Right wheels: forward speed plus turn (turning left = wheels go forward)
     float rightWheelDelta = speedRotation + turnRotation;
 
-    // Update cumulative rotation
-    wheelRotation_ += speedRotation;
-
     // Apply to wheels
-    if (wheels_[0]) wheels_[0]->rotation.x += leftWheelDelta;   // Front left
-    if (wheels_[2]) wheels_[2]->rotation.x += leftWheelDelta;   // Back left
-    if (wheels_[1]) wheels_[1]->rotation.x += rightWheelDelta;  // Front right
-    if (wheels_[3]) wheels_[3]->rotation.x += rightWheelDelta;  // Back right
+    if (wheels_[0]) wheels_[0]->rotation.x -= leftWheelDelta;   // Front left
+    if (wheels_[2]) wheels_[2]->rotation.x -= leftWheelDelta;   // Back left
+    if (wheels_[1]) wheels_[1]->rotation.x -= rightWheelDelta;  // Front right
+    if (wheels_[3]) wheels_[3]->rotation.x -= rightWheelDelta;  // Back right
 }
 
 std::shared_ptr<threepp::Group> Car::getGroup() {
     return group_;
+}
+
+threepp::Vector3 Car::getPosition() const {
+    return group_->position;
 }

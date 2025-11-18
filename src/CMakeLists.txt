@@ -7,6 +7,10 @@ add_library(MappeoppgaveLib
         bullet.cpp
         GameObject.cpp
         Game.cpp
+        CameraRig.cpp
+        BlurOverlay.cpp
+        WorldManager.cpp
+        Wolf.cpp
 )
 target_include_directories(MappeoppgaveLib PUBLIC ${CMAKE_SOURCE_DIR}/include)
 

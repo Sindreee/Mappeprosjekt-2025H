@@ -1,12 +1,5 @@
-// cpp
 #ifndef CAR_HPP
 #define CAR_HPP
-
-#include <threepp/loaders/AssimpLoader.hpp>
-#include <threepp/threepp.hpp>
-#include <memory>
-#include <array>
-
 
 
 #include <threepp/threepp.hpp>
@@ -21,6 +14,7 @@ public:
     void setSpeed(float speed);
     void setRotation(float rotation);
     std::shared_ptr<threepp::Group> getGroup();
+    threepp::Vector3 getPosition() const;
 
 private:
     std::shared_ptr<threepp::Group> group_;

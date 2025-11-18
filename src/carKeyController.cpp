@@ -67,3 +67,17 @@ float KeyController::getRotation() const {
     if (keyState_.right) rotation -= 1.0f;
     return rotation;
 }
+
+void KeyController::setMaxSpeed(float maxSpeed) {
+    maxSpeed_ = maxSpeed;
+    if (velocity_ > maxSpeed_) velocity_ = maxSpeed_;
+    if (velocity_ < -maxSpeed_) velocity_ = -maxSpeed_;
+}
+
+void KeyController::adjustMaxSpeed(float delta) {
+    setMaxSpeed(maxSpeed_ + delta);
+}
+
+float KeyController::getMaxSpeed() const {
+    return maxSpeed_;
+}
