@@ -18,6 +18,8 @@ struct Wolf {
     // Variation parameters
     threepp::Vector3 targetOffset{0, 0, 0};   // Constant offset added to target position per wolf
                           // Internal time accumulator for wobble
+    int hits = 0;            // number of bullet collisions
+    bool alive = true;       // becomes false after 5 hits
 };
 
 void spawnWolves(threepp::Scene& scene,

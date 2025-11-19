@@ -20,9 +20,9 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
 
     // Spawn positions for 3 wolves
     Vector3 spawnPositions[] = {
-        {200.0f, 0.0f, 200.0f},
-        {250.0f, 0.0f, 220.0f},
-        {10.0f, 0.0f, 230.0f}
+        {300.0f, 0.0f, 300.0f},
+        {350.0f, 0.0f, 320.0f},
+        {230.0f, 0.0f, 330.0f}
     };
 
     // Predefined offsets so they don't stack directly on target
@@ -49,6 +49,7 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
 
 void updateWolves(std::vector<Wolf>& wolves, float dt, const threepp::Vector3& targetPos) {
     for (auto& wolf : wolves) {
+        if (!wolf.alive) continue; // dead wolves do not move
 
 
         // Compute wobble vector in the local XZ plane relative to world axes

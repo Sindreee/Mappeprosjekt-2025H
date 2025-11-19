@@ -4,6 +4,7 @@
 
 #include "Game.hpp"
 #include <iostream>
+#include <iomanip>
 
 using namespace threepp;
 
@@ -35,6 +36,8 @@ void Game::initializeScene() {
     orbitControls_ = std::make_unique<threepp::OrbitControls>(*camera_, canvas_);
     orbitControls_->target.set(0, 0, 0);
     orbitControls_->update();
+
+    canvas_.addKeyListener(*cameraRig_); // allow L key to reverse view
 
     blurOverlay_ = std::make_unique<BlurOverlay>();
     worldManager_ = std::make_unique<WorldManager>(*scene_, collisionDetection_, loader_, blurLevel_);
@@ -111,7 +114,10 @@ void Game::processWolfCollisions(const threepp::Vector3& carPos) {
         const float dz = p.z - carPos.z;
         const float d2 = dx * dx + dz * dz;
         if (d2 <= collideDistSq) {
-            std::cerr << "Game over: Deer collided with a wolf." << std::endl;
+            const float lived = clock_.getElapsedTime();
+            std::cout << std::fixed << std::setprecision(2)
+                      << "YOU LIVED FOR " << lived << " seconds" << std::endl;
+            std::cerr << "Game over: Deer got eaten by a wolf." << std::endl;
             initialized_ = false; // keep window open, stop updating
             return;
         }
@@ -133,6 +139,46 @@ void Game::tick() {
     const auto& carPos = car_.getPosition();
     processBearCollisions(carPos);
     processWolfCollisions(carPos);
+
+    // Bullet-wolf collisions
+    if (turret_.object()) {
+        const auto& wolves = worldManager_->getWolves();
+        auto& bullets = const_cast<std::vector<std::shared_ptr<Bullet>>&>(turret_.getBullets());
+        for (auto& wolf : const_cast<std::vector<Wolf>&>(wolves)) {
+            if (!wolf.alive) continue;
+            for (auto it = bullets.begin(); it != bullets.end(); ++it) {
+                auto& b = *it;
+                if (!b->isAlive()) continue;
+                const auto wp = wolf.object->position;
+                const auto bp = b->getPosition();
+                float dx = wp.x - bp.x;
+                float dz = wp.z - bp.z;
+                float dist2 = dx*dx + dz*dz;
+                const float hitRadius = 5.0f; // tune collision radius
+                if (dist2 <= hitRadius * hitRadius) {
+                    wolf.hits++;
+                    wolf.maxSpeed += 50.0f; // increase chase pressure
+                    // Mark bullet expired immediately
+                    b->update(9999.0f);
+                    if (wolf.hits >= 5) {
+                        wolf.alive = false;
+                        // Optional: visually hide wolf
+                        wolf.object->visible = false;
+                        wolf.velocity.set(0,0,0);
+                    }
+                    break; // move to next wolf after a hit
+                }
+            }
+        }
+        // Victory check
+        bool allDead = true;
+        for (const auto& w : wolves) { if (w.alive) { allDead = false; break; } }
+        if (allDead) {
+            std::cout << "YOU WON!!" << std::endl;
+            initialized_ = false;
+        }
+    }
+
     worldManager_->processMushroomCollisions(carPos);
     worldManager_->update(dt, carPos);
 
@@ -146,3 +192,4 @@ void Game::tick() {
     renderer_.render(*scene_, *camera_);
     blurOverlay_->render(renderer_);
 }
+

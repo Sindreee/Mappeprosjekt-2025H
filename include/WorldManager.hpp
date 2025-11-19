@@ -11,7 +11,7 @@
 #include "car.hpp"
 
 struct WorldConfig {
-    int treeCount = 1000;
+    int treeCount = 2000;
     int mushroomCount = 500;
     float treeScale = 40.0f;
     float mushroomScale = 20.0f;
