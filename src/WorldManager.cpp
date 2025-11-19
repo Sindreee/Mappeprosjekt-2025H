@@ -67,7 +67,7 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
 
     // Spawn 3 wolves with acceleration
     // maxSpeed = 40.0f, acceleration = 30.0f (so deer can outrun them with sharp turns)
-    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 50.0f, 30.0f);
+    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 400.0f, 150.0f);
 }
 
 void WorldManager::processMushroomCollisions(const threepp::Vector3& carPos) {
@@ -88,12 +88,13 @@ void WorldManager::update(float dt, const threepp::Vector3& carPos) {
     // Update wolves to chase the car/deer
     updateWolves(wolves_, dt, carPos);
     (void)dt;
-
 }
+
 
 const std::vector<std::shared_ptr<GameObject>>& WorldManager::getTrees() const {
     return trees_;
 }
+
 
 const std::vector<Wolf>& WorldManager::getWolves() const {
     return wolves_;

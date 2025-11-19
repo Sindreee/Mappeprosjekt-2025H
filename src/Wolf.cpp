@@ -20,16 +20,16 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
 
     // Spawn positions for 3 wolves
     Vector3 spawnPositions[] = {
-        {100.0f, 0.0f, 100.0f},
-        {150.0f, 0.0f, 120.0f},
-        {80.0f, 0.0f, 130.0f}
+        {200.0f, 0.0f, 200.0f},
+        {250.0f, 0.0f, 220.0f},
+        {10.0f, 0.0f, 230.0f}
     };
 
     // Predefined offsets so they don't stack directly on target
     Vector3 targetOffsets[] = {
         { 15.0f, 0.0f,  10.0f},
         {-20.0f, 0.0f, -15.0f},
-        { 10.0f, 0.0f, -20.0f}
+        { 0.0f, 0.0f, 0.0f}
     };
 
 

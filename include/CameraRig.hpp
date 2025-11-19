@@ -5,7 +5,7 @@
 
 class CameraRig {
 public:
-    CameraRig(float distance = 15.0f, float height = 3.0f, float smoothing = 0.1f);
+    CameraRig(float distance = 40.0f, float height = 8.0f, float smoothing = 0.1f);
 
     void follow(threepp::PerspectiveCamera& camera, threepp::Object3D& target);
 
