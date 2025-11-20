@@ -31,8 +31,6 @@ private:
     void setupLights();
     void setupTurret();
     void configureEvents();
-    void processBearCollisions(const threepp::Vector3& carPos);
-    void processWolfCollisions(const threepp::Vector3& carPos);
     void tick();
 
     threepp::Canvas canvas_;
@@ -55,7 +53,6 @@ private:
     // Collision radii
     float carCollisionRadius_ = 7.0f;
     float bearCollisionRadius_ = 7.0f;
-    float wolfCollisionRadius_ = 2.0f;
     float bearCollisionCooldown_ = 0.0f; // seconds
 
     threepp::AssimpLoader loader_;
@@ -69,3 +66,4 @@ private:
 };
 
 #endif //MAPPEOPPGAVE_GAME_CPP_H
+

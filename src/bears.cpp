@@ -5,27 +5,20 @@
 // C++
 // File: 'include/bears.hpp'
 #include "bears.hpp"
-
 #include <threepp/loaders/AssimpLoader.hpp>
 #include <random>
 #include <stdexcept>
+#include "Random.hpp"
 
 using namespace threepp;
 
 namespace {
-    std::mt19937& rng() {
-        static std::mt19937 gen(std::random_device{}());
-        return gen;
-    }
-
-    std::pair<float, float> randPos(float minV = 0.f, float maxV = 4000.f) {
-        std::uniform_real_distribution<float> dist(minV, maxV);
-        return {dist(rng()), dist(rng())};
+    std::pair<float, float> randPos(float minV = -1600.f, float maxV = 1600.f) {
+        return rnd::uniform2(minV, maxV);
     }
 
     std::pair<float, float> rand01() {
-        std::uniform_real_distribution<float> dist(0.f, 1.f);
-        return {dist(rng()), dist(rng())};
+        return {rnd::unit(), rnd::unit()};
     }
 }
 

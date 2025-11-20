@@ -49,6 +49,7 @@ void CollisionDetection::processTypePair(ColliderType a, ColliderType b) {
     std::vector<int> bIdx; bIdx.reserve(colliders_.size());
     for (int i = 0; i < static_cast<int>(colliders_.size()); ++i) {
         if (!colliders_[i].active || !colliders_[i].object) continue;
+        if (!colliders_[i].object->visible) continue; // ignore hidden objects
         if (colliders_[i].type == a) aIdx.push_back(i);
         else if (colliders_[i].type == b) bIdx.push_back(i);
     }

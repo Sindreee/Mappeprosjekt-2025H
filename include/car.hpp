@@ -24,8 +24,6 @@ private:
 
     float speed_ = 0.0f;
     float rotation_ = 0.0f;
-    float wheelRotation_ = 0.0f;
 };
 
 #endif // CAR_HPP
-
