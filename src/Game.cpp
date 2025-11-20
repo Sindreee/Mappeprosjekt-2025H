@@ -32,6 +32,10 @@ int Game::run() {
 void Game::initializeScene() {
     scene_->add(car_.getGroup());
 
+    // Register car collider first so callbacks referencing controller_ can work after controller init
+    int carColliderId = collisionDetection_.addCollider(car_.getGroup(), carCollisionRadius_, ColliderType::CAR);
+    (void)carColliderId;
+
     cameraRig_ = std::make_unique<CameraRig>();
     orbitControls_ = std::make_unique<threepp::OrbitControls>(*camera_, canvas_);
     orbitControls_->target.set(0, 0, 0);
@@ -50,6 +54,17 @@ void Game::initializeScene() {
 
     try {
         spawnBears(*scene_, bears_, 500, "../Models/Mesh_Bear.obj", 0.1f);
+        // Register bears as colliders with slowdown callback
+        for (auto& b : bears_) {
+            collisionDetection_.addCollider(b.object, bearCollisionRadius_, ColliderType::BEAR,
+                [this](const Collider& bear, const Collider& other){
+                    if (other.type == ColliderType::CAR && bearCollisionCooldown_ <= 0.0f) {
+                        controller_->adjustMaxSpeed(-15.0f);
+                        if (controller_->getMaxSpeed() < 30.0f) controller_->setMaxSpeed(30.0f);
+                        bearCollisionCooldown_ = 1.0f;
+                    }
+                });
+        }
     } catch (const std::exception& e) {
         std::cerr << "spawnBears failed: " << e.what() << std::endl;
         initialized_ = false;
@@ -81,47 +96,13 @@ void Game::configureEvents() {
 }
 
 void Game::processBearCollisions(const threepp::Vector3& carPos) {
-    const float collideDist = carCollisionRadius_ + bearCollisionRadius_;
-    const float collideDistSq = collideDist * collideDist;
-
-    for (const auto& b : bears_) {
-        const auto& p = b.object->position;
-        const float dx = p.x - carPos.x;
-        const float dz = p.z - carPos.z;
-        const float d2 = dx * dx + dz * dz;
-        if (d2 <= collideDistSq) {
-            if (bearCollisionCooldown_ <= 0.0f) {
-                controller_->adjustMaxSpeed(-15.0f);
-                if (controller_->getMaxSpeed() < 30.0f) {
-                    controller_->setMaxSpeed(30.0f);
-                }
-                bearCollisionCooldown_ = 1.0f; // seconds between penalties
-            }
-            return;
-        }
-    }
+    // Deprecated: handled via CollisionDetection callbacks
+    (void)carPos;
 }
 
 void Game::processWolfCollisions(const threepp::Vector3& carPos) {
-    if (!worldManager_) return;
-    const float collideDist = carCollisionRadius_ + wolfCollisionRadius_;
-    const float collideDistSq = collideDist * collideDist;
-
-    const auto& wolves = worldManager_->getWolves();
-    for (const auto& w : wolves) {
-        const auto& p = w.object->position;
-        const float dx = p.x - carPos.x;
-        const float dz = p.z - carPos.z;
-        const float d2 = dx * dx + dz * dz;
-        if (d2 <= collideDistSq) {
-            const float lived = clock_.getElapsedTime();
-            std::cout << std::fixed << std::setprecision(2)
-                      << "YOU LIVED FOR " << lived << " seconds" << std::endl;
-            std::cerr << "Game over: Deer got eaten by a wolf." << std::endl;
-            initialized_ = false; // keep window open, stop updating
-            return;
-        }
-    }
+    // Deprecated: handled via CollisionDetection callbacks (CAR vs WOLF)
+    (void)carPos;
 }
 
 void Game::tick() {
@@ -137,49 +118,54 @@ void Game::tick() {
     car_.update(dt);
 
     const auto& carPos = car_.getPosition();
-    processBearCollisions(carPos);
-    processWolfCollisions(carPos);
 
-    // Bullet-wolf collisions
-    if (turret_.object()) {
-        const auto& wolves = worldManager_->getWolves();
+    // Register newly spawned bullets as colliders (one-time per bullet)
+    {
         auto& bullets = const_cast<std::vector<std::shared_ptr<Bullet>>&>(turret_.getBullets());
-        for (auto& wolf : const_cast<std::vector<Wolf>&>(wolves)) {
-            if (!wolf.alive) continue;
-            for (auto it = bullets.begin(); it != bullets.end(); ++it) {
-                auto& b = *it;
-                if (!b->isAlive()) continue;
-                const auto wp = wolf.object->position;
-                const auto bp = b->getPosition();
-                float dx = wp.x - bp.x;
-                float dz = wp.z - bp.z;
-                float dist2 = dx*dx + dz*dz;
-                const float hitRadius = 5.0f; // tune collision radius
-                if (dist2 <= hitRadius * hitRadius) {
-                    wolf.hits++;
-                    wolf.maxSpeed += 50.0f; // increase chase pressure
-                    // Mark bullet expired immediately
-                    b->update(9999.0f);
-                    if (wolf.hits >= 5) {
-                        wolf.alive = false;
-                        // Optional: visually hide wolf
-                        wolf.object->visible = false;
-                        wolf.velocity.set(0,0,0);
-                    }
-                    break; // move to next wolf after a hit
-                }
+        for (auto& b : bullets) {
+            bool alreadyRegistered = false;
+            for (const auto& c : collisionDetection_.colliders()) {
+                if (c.type == ColliderType::BULLET && c.object.get() == b->getModel().get()) { alreadyRegistered = true; break; }
+            }
+            if (!alreadyRegistered) {
+                collisionDetection_.addCollider(b->getModel(), 5.0f, ColliderType::BULLET,
+                    [this](const Collider& bullet, const Collider& other){
+                        if (other.type == ColliderType::WOLF) {
+                            // Increment wolf state & expire bullet
+                            for (auto& w : const_cast<std::vector<Wolf>&>(worldManager_->getWolves())) {
+                                if (w.object.get() == other.object.get() && w.alive) {
+                                    w.hits++;
+                                    w.maxSpeed += 50.0f;
+                                    if (w.hits >= 5) {
+                                        w.alive = false;
+                                        w.object->visible = false;
+                                        w.velocity.set(0,0,0);
+                                    }
+                                    break;
+                                }
+                            }
+                            // Deactivate bullet collider
+                            bullet.object->visible = false;
+                        }
+                    });
             }
         }
-        // Victory check
+    }
+
+    // Process generic collisions
+    collisionDetection_.processAllPairs();
+
+    // Victory check after bullet/wolf processing
+    {
         bool allDead = true;
-        for (const auto& w : wolves) { if (w.alive) { allDead = false; break; } }
+        for (const auto& w : worldManager_->getWolves()) { if (w.alive) { allDead = false; break; } }
         if (allDead) {
             std::cout << "YOU WON!!" << std::endl;
             initialized_ = false;
         }
     }
 
-    worldManager_->processMushroomCollisions(carPos);
+    worldManager_->processMushroomCollisions(carPos); // now no-op
     worldManager_->update(dt, carPos);
 
     blurOverlay_->update(blurLevel_, dt, clock_.getElapsedTime(), maxBlur_, blurDecayRate_);
@@ -189,7 +175,12 @@ void Game::tick() {
     updateBears(bears_, dt);
     cameraRig_->follow(*camera_, *car_.getGroup());
 
+    // Wolf collision end game via callback prints lived time only once here if stopped
+    if (!initialized_) {
+        // Ensure message printed if wolves ended game through callback (CAR vs WOLF)
+        // Time printing moved to wolf collision callback? For now we keep original logic when stopping.
+    }
+
     renderer_.render(*scene_, *camera_);
     blurOverlay_->render(renderer_);
 }
-

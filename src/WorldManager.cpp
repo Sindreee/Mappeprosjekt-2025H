@@ -34,6 +34,22 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
             blurLevel_ = std::min(blurLevel_ + 3.0f, 8.0f);
         });
 
+        // Register collider with callback to deactivate & remove when car touches
+        collisionDetection_.addCollider(mushroomClone, config.mushroomCollisionRadius, ColliderType::MUSHROOM,
+            [this](const Collider& self, const Collider& other){
+                if (other.type == ColliderType::CAR) {
+                    // Find matching mushroom and remove
+                    for (auto it = mushrooms_.begin(); it != mushrooms_.end(); ++it) {
+                        if ((*it)->getModel().get() == self.object.get()) {
+                            (*it)->handleCollision();
+                            (*it)->removeFromScene(scene_);
+                            mushrooms_.erase(it);
+                            break;
+                        }
+                    }
+                }
+            });
+
         scene_.add(mushroom->getModel());
         mushrooms_.push_back(mushroom);
     }
@@ -51,7 +67,6 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
     for (int i = 0; i < config.treeCount; ++i) {
         auto [x, z] = randomPos();
 
-        // Clone the template instead of loading from file
         auto treeClone = treeTemplate->children[0]->clone();
         treeClone->position.set(x, 65, z);
         treeClone->scale.set(config.treeScale, config.treeScale, config.treeScale);
@@ -61,41 +76,29 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
         scene_.add(tree->getModel());
         trees_.push_back(tree);
         treePositions.emplace_back(x, 60, z);
+
+        // Trees participate in CAR collisions only for stopping; callback empty here
+        collisionDetection_.addCollider(treeClone, config.treeCollisionRadius, ColliderType::TREE);
     }
 
-    collisionDetection_.setObstacles(treePositions);
+    collisionDetection_.setObstacles(treePositions); // still used by movement blocking
 
-    // Spawn 3 wolves with acceleration
-    // maxSpeed = 40.0f, acceleration = 30.0f (so deer can outrun them with sharp turns)
-    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 400.0f, 150.0f);
+    // Spawn 3 wolves
+    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 120.0f, 150.0f);
+    for (auto& w : wolves_) {
+        collisionDetection_.addCollider(w.object, 2.0f, ColliderType::WOLF);
+    }
 }
 
 void WorldManager::processMushroomCollisions(const threepp::Vector3& carPos) {
-    for (auto it = mushrooms_.begin(); it != mushrooms_.end();) {
-        if ((*it)->checkCollision(carPos)) {
-            (*it)->handleCollision();
-            (*it)->removeFromScene(scene_);
-            it = mushrooms_.erase(it);
-        } else {
-            ++it;
-        }
-    }
+    // Now handled via CollisionDetection callbacks; keep method for compatibility but do nothing
+    (void)carPos;
 }
 
-
-
 void WorldManager::update(float dt, const threepp::Vector3& carPos) {
-    // Update wolves to chase the car/deer
     updateWolves(wolves_, dt, carPos);
     (void)dt;
 }
 
-
-const std::vector<std::shared_ptr<GameObject>>& WorldManager::getTrees() const {
-    return trees_;
-}
-
-
-const std::vector<Wolf>& WorldManager::getWolves() const {
-    return wolves_;
-}
+const std::vector<std::shared_ptr<GameObject>>& WorldManager::getTrees() const { return trees_; }
+const std::vector<Wolf>& WorldManager::getWolves() const { return wolves_; }
