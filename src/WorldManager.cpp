@@ -19,21 +19,75 @@ WorldManager::WorldManager(threepp::Scene& scene, CollisionDetection& collisionD
     : scene_(scene), collisionDetection_(collisionDetection), loader_(loader), blurLevel_(blurLevel) {}
 
 void WorldManager::spawnWorld(const WorldConfig& config) {
+    lastConfig_ = config; // cache for resets
     spawnMushrooms(config);
-    spawnTrees(config);
+    spawnTrees(config); // trees considered static; not removed on reset
     spawnBears(config);
     spawnWolvesDefault();
+}
+
+// Removal helpers
+void WorldManager::removeMushrooms() {
+    for (auto& m : mushrooms_) {
+        if (m && m->getModel()->parent) {
+            m->removeFromScene(scene_);
+        }
+    }
+    mushrooms_.clear();
+}
+
+void WorldManager::removeBears() {
+    for (auto& b : bears_) {
+        if (b.object && b.object->parent) {
+            b.object->parent->remove(*b.object);
+        }
+    }
+    bears_.clear();
+}
+
+void WorldManager::removeWolves() {
+    for (auto& w : wolves_) {
+        if (w.object && w.object->parent) {
+            w.object->parent->remove(*w.object);
+        }
+    }
+    wolves_.clear();
+}
+
+void WorldManager::resetDynamicEntities() {
+    removeMushrooms();
+    removeBears();
+    removeWolves();
+    // Deactivate previous dynamic colliders so they won't register collisions
+    collisionDetection_.removeCollidersOfType(ColliderType::MUSHROOM);
+    collisionDetection_.removeCollidersOfType(ColliderType::BEAR);
+    collisionDetection_.removeCollidersOfType(ColliderType::WOLF);
+    collisionDetection_.cleanupInactive();
+
+    registeredBullets_.clear();
+    blurLevel_ = 0.0f;
+
+    spawnMushrooms(lastConfig_);
+    spawnBears(lastConfig_);
+    spawnWolvesDefault();
+
+    for (auto& w : wolves_) {
+        w.hits = 0;
+        w.alive = true;
+        w.velocity.set(0,0,0);
+    }
+    for (auto& b : bears_) b.timer = 0.0f;
 }
 
 void WorldManager::registerCar(const std::shared_ptr<threepp::Object3D>& car, float radius,
                                std::function<void()> onWolfCollision) {
     car_ = car;
     onWolfCollision_ = std::move(onWolfCollision);
-
     collisionDetection_.addCollider(car_, radius, ColliderType::CAR,
         [this](const Collider& self, const Collider& other){
-            if (other.type == ColliderType::WOLF && onWolfCollision_) {
-                onWolfCollision_();
+            if (other.type == ColliderType::WOLF) {
+                // Notify game that a wolf melee hit occurred
+                if (onWolfCollision_) onWolfCollision_();
             }
         });
 }
@@ -117,7 +171,7 @@ void WorldManager::spawnBears(const WorldConfig& config) {
 
 void WorldManager::spawnWolvesDefault() {
 
-    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 1.0f, 150.0f);
+    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 60.0f, 150.0f);
     for (auto& w : wolves_) {
         collisionDetection_.addCollider(w.object, 2.0f, ColliderType::WOLF);
     }

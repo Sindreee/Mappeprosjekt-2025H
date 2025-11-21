@@ -52,6 +52,11 @@ public:
     // Convenience to process several common pairs in one call
     void processAllPairs();
 
+    // New: deactivate all colliders of a given type (used when resetting world)
+    void removeCollidersOfType(ColliderType type);
+    // New: physically erase inactive colliders to keep list compact
+    void cleanupInactive();
+
     // Access (optional future use)
     const std::vector<Collider>& colliders() const { return colliders_; }
 

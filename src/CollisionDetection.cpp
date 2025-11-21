@@ -43,6 +43,18 @@ void CollisionDetection::deactivateCollider(int id) {
     }
 }
 
+void CollisionDetection::removeCollidersOfType(ColliderType type) {
+    for (auto& c : colliders_) {
+        if (c.type == type) c.active = false;
+    }
+}
+
+void CollisionDetection::cleanupInactive() {
+    colliders_.erase(
+        std::remove_if(colliders_.begin(), colliders_.end(), [](const Collider& c){ return !c.active; }),
+        colliders_.end());
+}
+
 void CollisionDetection::processTypePair(ColliderType a, ColliderType b) {
     // Collect indices by type for quick iteration
     std::vector<int> aIdx; aIdx.reserve(colliders_.size());

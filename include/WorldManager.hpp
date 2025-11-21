@@ -53,9 +53,10 @@ public:
 
     void addSkyAndSun(float elevationDeg =15.0f, float azimuthDeg = 180.0f);
     void updateSkyPosition(const threepp::Vector3& cameraPos); // new: keep camera inside sky
-
-    // Optional: set a vertical offset if you want the dome visually lower than the camera
     void setSkyYOffset(float yOffset) { skyYOffset_ = yOffset; }
+
+    // Restart support: remove & respawn dynamic entities (mushrooms, bears, wolves) & reset blur
+    void resetDynamicEntities();
 
 private:
     void spawnMushrooms(const WorldConfig& config);
@@ -64,6 +65,13 @@ private:
     void spawnWolvesDefault();
 
     void syncBullets(const std::vector<std::shared_ptr<class Bullet>>& bullets);
+
+    // Removal helpers
+    void removeMushrooms();
+    void removeBears();
+    void removeWolves();
+
+    WorldConfig lastConfig_{}; // store last used config for resets
 
 private:
     threepp::Scene& scene_;

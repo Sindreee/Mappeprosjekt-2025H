@@ -15,6 +15,7 @@ public:
     void setRotation(float rotation);
     std::shared_ptr<threepp::Group> getGroup();
     threepp::Vector3 getPosition() const;
+    void reset(); // reset to initial state for restart
 
 private:
     std::shared_ptr<threepp::Group> group_;
@@ -24,6 +25,7 @@ private:
 
     float speed_ = 0.0f;
     float rotation_ = 0.0f;
+    threepp::Vector3 spawnPos_{0,0,0};
 };
 
 #endif // CAR_HPP

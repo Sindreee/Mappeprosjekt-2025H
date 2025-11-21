@@ -32,6 +32,7 @@ private:
     void setupTurret();
     void configureEvents();
     void tick();
+    void handleWolfHit(); // wolf melee damage handler
 
     threepp::Canvas canvas_;
     threepp::GLRenderer renderer_;
@@ -63,7 +64,11 @@ private:
     const float blurDecayRate_ = 0.2f;
 
     bool initialized_ = true;
+
+    int carHitCount_ = 0;          // wolf melee hits taken
+    float carHitCooldown_ = 0.0f;  // cooldown between registering hits
+    const int carHitsToDie_ = 3;   // hits needed to die
+    bool carDestroyed_ = false;    // car death state
 };
 
 #endif //MAPPEOPPGAVE_GAME_CPP_H
-

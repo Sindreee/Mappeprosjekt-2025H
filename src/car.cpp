@@ -95,3 +95,14 @@ std::shared_ptr<threepp::Group> Car::getGroup() {
 threepp::Vector3 Car::getPosition() const {
     return group_->position;
 }
+
+void Car::reset() {
+    group_->position.copy(spawnPos_);
+    group_->rotation.set(0,0,0);
+    speed_ = 0.0f;
+    rotation_ = 0.0f;
+    // Reset wheel rotations
+    for (auto& w : wheels_) {
+        if (w) w->rotation.set(0,0,0);
+    }
+}

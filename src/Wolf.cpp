@@ -27,9 +27,9 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
 
     // Predefined offsets so they don't stack directly on target
     Vector3 targetOffsets[] = {
-        { 15.0f, 0.0f,  10.0f},
-        {-20.0f, 0.0f, -15.0f},
-        { 0.0f, 0.0f, 0.0f}
+        { 6.0f, 0.0f,  10.0f},
+        {0.0f, 0.0f, -15.0f},
+        { -5.0f, 0.0f, -7.0f}
     };
 
 
@@ -42,6 +42,7 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
 
         Wolf w{wolf, Vector3{0, 0, 0}, maxSpeed, acceleration};
         w.targetOffset = targetOffsets[i];
+
 
         outWolves.push_back(std::move(w));
     }

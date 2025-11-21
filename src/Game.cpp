@@ -43,15 +43,10 @@ void Game::initializeScene() {
     blurOverlay_ = std::make_unique<BlurOverlay>();
     worldManager_ = std::make_unique<WorldManager>(*scene_, collisionDetection_, loader_, blurLevel_);
     worldManager_->spawnWorld({});
-    worldManager_->addSkyAndSun(35.0f, 135.0f); // soft morning/evening light
+    worldManager_->addSkyAndSun(35.0f, 135.0f);
 
-    // Register car with world collision system (wolf hit ends game with survival time)
-    worldManager_->registerCar(car_.getGroup(), carCollisionRadius_, [this]{
-        if (!initialized_) return;
-        initialized_ = false;
-        double lived = clock_.getElapsedTime();
-        std::cout << "YOU LIVED FOR " << std::fixed << std::setprecision(1) << lived << " seconds" << std::endl;
-    });
+    // Register car ONLY ONCE with melee callback (wolf collision damages car)
+    worldManager_->registerCar(car_.getGroup(), carCollisionRadius_, [this]{ handleWolfHit(); });
 
     controller_ = std::make_unique<KeyController>(*car_.getGroup(), collisionDetection_);
     canvas_.addKeyListener(*controller_);
@@ -90,6 +85,49 @@ void Game::configureEvents() {
         camera_->updateProjectionMatrix();
         renderer_.setSize(size);
     });
+
+    class RestartListener : public threepp::KeyListener {
+    public:
+        RestartListener(Game& game): game_(game) {}
+        void onKeyPressed(threepp::KeyEvent evt) override {
+            if (evt.key == threepp::Key::R) {
+                game_.initialized_ = true;
+                game_.bearCollisionCooldown_ = 0.0f;
+                game_.blurLevel_ = 0.0f;
+                game_.carHitCount_ = 0;
+                game_.carHitCooldown_ = 0.0f;
+                game_.carDestroyed_ = false;
+                if (game_.controller_) game_.controller_->setMaxSpeed(150.0f);
+                game_.car_.reset();
+                game_.worldManager_->resetDynamicEntities();
+                game_.clock_.start();
+                std::cout << "Game reset" << std::endl;
+            }
+        }
+        void onKeyReleased(threepp::KeyEvent) override {}
+    private:
+        Game& game_;
+    };
+    static auto restartListener = std::make_unique<RestartListener>(*this);
+    canvas_.addKeyListener(*restartListener);
+}
+
+void Game::handleWolfHit() {
+    if (carDestroyed_) return;
+    if (carHitCooldown_ > 0.0f) return; // prevent rapid multi-count
+
+    carHitCount_++;
+    carHitCooldown_ = 0.5f; // half second cooldown
+    std::cout << "Car hit by wolf (" << carHitCount_ << "/" << carHitsToDie_ << ")" << std::endl;
+
+    // Optional feedback: reduce max speed slightly each hit
+    if (controller_) controller_->adjustMaxSpeed(-5.0f);
+
+    if (carHitCount_ >= carHitsToDie_) {
+        carDestroyed_ = true;
+        initialized_ = false; // stop game loop
+        std::cout << "CAR DESTROYED. YOU LOSE." << std::endl;
+    }
 }
 
 void Game::tick() {
@@ -97,6 +135,7 @@ void Game::tick() {
 
     float dt = clock_.getDelta();
     if (bearCollisionCooldown_ > 0.0f) bearCollisionCooldown_ = std::max(0.0f, bearCollisionCooldown_ - dt);
+    if (carHitCooldown_ > 0.0f) carHitCooldown_ = std::max(0.0f, carHitCooldown_ - dt); // fixed condition
 
     controller_->update(dt);
 

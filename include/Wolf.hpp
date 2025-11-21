@@ -11,15 +11,12 @@
 
 struct Wolf {
     std::shared_ptr<threepp::Object3D> object;
-    threepp::Vector3 velocity{0, 0, 0};  // Current velocity for acceleration
+    threepp::Vector3 velocity{0, 0, 0};
     float maxSpeed;
     float acceleration;
-
-    // Variation parameters
-    threepp::Vector3 targetOffset{0, 0, 0};   // Constant offset added to target position per wolf
-                          // Internal time accumulator for wobble
-    int hits = 0;            // number of bullet collisions
-    bool alive = true;       // becomes false after 5 hits
+    threepp::Vector3 targetOffset{0, 0, 0};
+    int hits = 0;            // bullet collision hits
+    bool alive = true;       // becomes false after 5 bullet hits
 };
 
 void spawnWolves(threepp::Scene& scene,
