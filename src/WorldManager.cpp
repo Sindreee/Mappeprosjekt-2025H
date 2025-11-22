@@ -170,10 +170,22 @@ void WorldManager::spawnBears(const WorldConfig& config) {
 }
 
 void WorldManager::spawnWolvesDefault() {
+    // Calculate wolf speed based on difficulty level
+    // Level 1: 40 base speed, 150 acceleration
+    // Level 2: 70 base speed, 200 acceleration
+    // Level 3: 100 base speed, 250 acceleration
+    float baseSpeed = 50.0f + (difficultyLevel_ - 1) * 40.0f;
+    float baseAcceleration = 150.0f + (difficultyLevel_ - 1) * 50.0f;
 
-    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, 60.0f, 150.0f);
+    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, baseSpeed, baseAcceleration);
     for (auto& w : wolves_) {
         collisionDetection_.addCollider(w.object, 2.0f, ColliderType::WOLF);
+    }
+}
+
+void WorldManager::setDifficultyLevel(int level) {
+    if (level >= 1 && level <= 3) {
+        difficultyLevel_ = level;
     }
 }
 

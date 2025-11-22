@@ -25,7 +25,7 @@ struct WorldConfig {
     float bearScale = 0.1f;
 
     float treeCollisionRadius = 7.0f;
-    float mushroomCollisionRadius = 15.0f;
+    float mushroomCollisionRadius = 4.0f;
     float bearCollisionRadius = 7.0f;
 };
 
@@ -49,7 +49,11 @@ public:
 
     const std::vector<std::shared_ptr<GameObject>>& getTrees() const;
     const std::vector<Wolf>& getWolves() const;
+    const std::vector<std::shared_ptr<GameObject>>& getMushrooms() const { return mushrooms_; }
+    const std::vector<MovingBear>& getBears() const { return bears_; }
     bool allWolvesDead() const;
+
+    void setDifficultyLevel(int level); // Set difficulty (1-3) for wolf spawn speed
 
     void addSkyAndSun(float elevationDeg =15.0f, float azimuthDeg = 180.0f);
     void updateSkyPosition(const threepp::Vector3& cameraPos); // new: keep camera inside sky
@@ -93,6 +97,8 @@ private:
     std::function<void()> onBearCollision_;
 
     std::unordered_set<const threepp::Object3D*> registeredBullets_;
+
+    int difficultyLevel_ = 1; // Difficulty level (1-3) affects wolf speed
 };
 
 #endif // WORLD_MANAGER_HPP

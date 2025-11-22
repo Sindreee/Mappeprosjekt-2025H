@@ -20,6 +20,7 @@
 #include "bears.hpp"
 #include "WorldManager.hpp"
 #include "BlurOverlay.hpp"
+#include "DebugUI.hpp" // Include full definition for std::unique_ptr
 
 class Game {
 public:
@@ -27,12 +28,14 @@ public:
     int run();
 
 private:
+    friend class DebugUI; // allow UI panels to access internal state
     void initializeScene();
     void setupLights();
     void setupTurret();
     void configureEvents();
     void tick();
     void handleWolfHit(); // wolf melee damage handler
+    void restartGame(); // extracted restart logic for reuse (UI + key)
 
     threepp::Canvas canvas_;
     threepp::GLRenderer renderer_;
@@ -49,9 +52,10 @@ private:
     std::unique_ptr<CameraRig> cameraRig_;
     std::unique_ptr<WorldManager> worldManager_;
     std::unique_ptr<BlurOverlay> blurOverlay_;
+    std::unique_ptr<DebugUI> debugUI_;
 
 
-    // Collision radii
+    // Collision radius
     float carCollisionRadius_ = 7.0f;
     float bearCollisionRadius_ = 7.0f;
     float bearCollisionCooldown_ = 0.0f; // seconds
@@ -67,8 +71,10 @@ private:
 
     int carHitCount_ = 0;          // wolf melee hits taken
     float carHitCooldown_ = 0.0f;  // cooldown between registering hits
-    const int carHitsToDie_ = 3;   // hits needed to die
+    const int carHitsToDie_ = 10;   // hits needed to die
     bool carDestroyed_ = false;    // car death state
+
+    int difficultyLevel_ = 1;      // Difficulty level (1, 2, or 3) - affects wolf speed
 };
 
 #endif //MAPPEOPPGAVE_GAME_CPP_H

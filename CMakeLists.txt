@@ -29,6 +29,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(assimp)
 
+FetchContent_Declare(
+        imgui
+
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+
+        GIT_TAG v1.92.5
+)
+
+FetchContent_MakeAvailable(imgui)
+
 add_subdirectory(src)
 
 add_executable(Mappeoppgave main.cpp
@@ -36,3 +46,4 @@ add_executable(Mappeoppgave main.cpp
 
 target_link_libraries(Mappeoppgave PRIVATE MappeoppgaveLib)
 target_include_directories(Mappeoppgave PRIVATE "${CMAKE_SOURCE_DIR}/include")
+

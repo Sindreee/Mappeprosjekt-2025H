@@ -6,6 +6,9 @@
 #include <iostream>
 #include <iomanip>
 #include <unordered_set>
+#include "DebugUI.hpp"
+
+struct GLFWwindow; // Forward declaration
 
 using namespace threepp;
 
@@ -23,6 +26,9 @@ Game::Game()
     setupLights();
     setupTurret();
     configureEvents();
+
+    // Initialize ImGui with the window handle from canvas
+    debugUI_ = std::make_unique<DebugUI>(*this, static_cast<GLFWwindow*>(canvas_.windowPtr()));
 }
 
 int Game::run() {
@@ -91,17 +97,7 @@ void Game::configureEvents() {
         RestartListener(Game& game): game_(game) {}
         void onKeyPressed(threepp::KeyEvent evt) override {
             if (evt.key == threepp::Key::R) {
-                game_.initialized_ = true;
-                game_.bearCollisionCooldown_ = 0.0f;
-                game_.blurLevel_ = 0.0f;
-                game_.carHitCount_ = 0;
-                game_.carHitCooldown_ = 0.0f;
-                game_.carDestroyed_ = false;
-                if (game_.controller_) game_.controller_->setMaxSpeed(150.0f);
-                game_.car_.reset();
-                game_.worldManager_->resetDynamicEntities();
-                game_.clock_.start();
-                std::cout << "Game reset" << std::endl;
+                game_.restartGame();
             }
         }
         void onKeyReleased(threepp::KeyEvent) override {}
@@ -112,13 +108,31 @@ void Game::configureEvents() {
     canvas_.addKeyListener(*restartListener);
 }
 
+void Game::restartGame() {
+    initialized_ = true;
+    bearCollisionCooldown_ = 0.0f;
+    blurLevel_ = 0.0f;
+    carHitCount_ = 0;
+    carHitCooldown_ = 0.0f;
+    carDestroyed_ = false;
+    if (controller_) controller_->setMaxSpeed(150.0f);
+    car_.reset();
+
+    // Apply difficulty level before respawning wolves
+    worldManager_->setDifficultyLevel(difficultyLevel_);
+    worldManager_->resetDynamicEntities();
+
+    clock_.start();
+    std::cout << "Game reset (Difficulty Level " << difficultyLevel_ << ")" << std::endl;
+}
+
 void Game::handleWolfHit() {
     if (carDestroyed_) return;
     if (carHitCooldown_ > 0.0f) return; // prevent rapid multi-count
 
     carHitCount_++;
     carHitCooldown_ = 0.5f; // half second cooldown
-    std::cout << "Car hit by wolf (" << carHitCount_ << "/" << carHitsToDie_ << ")" << std::endl;
+    std::cout << "Deer hit by wolf (" << carHitCount_ << "/" << carHitsToDie_ << ")" << std::endl;
 
     // Optional feedback: reduce max speed slightly each hit
     if (controller_) controller_->adjustMaxSpeed(-5.0f);
@@ -126,7 +140,7 @@ void Game::handleWolfHit() {
     if (carHitCount_ >= carHitsToDie_) {
         carDestroyed_ = true;
         initialized_ = false; // stop game loop
-        std::cout << "CAR DESTROYED. YOU LOSE." << std::endl;
+        std::cout << "Deer Eaten Alive. YOU LOSE." << std::endl;
     }
 }
 
@@ -135,7 +149,7 @@ void Game::tick() {
 
     float dt = clock_.getDelta();
     if (bearCollisionCooldown_ > 0.0f) bearCollisionCooldown_ = std::max(0.0f, bearCollisionCooldown_ - dt);
-    if (carHitCooldown_ > 0.0f) carHitCooldown_ = std::max(0.0f, carHitCooldown_ - dt); // fixed condition
+    if (carHitCooldown_ > 0.0f) carHitCooldown_ = std::max(0.0f, carHitCooldown_ - dt);
 
     controller_->update(dt);
 
@@ -143,10 +157,8 @@ void Game::tick() {
     car_.setRotation(controller_->getRotation());
     car_.update(dt);
 
-    // Let WorldManager sync bullets and process all collisions + wolves
     worldManager_->update(dt, car_.getPosition(), turret_.getBullets());
 
-    // Victory check
     if (worldManager_->allWolvesDead()) {
         std::cout << "YOU WON!!" << std::endl;
         initialized_ = false;
@@ -160,6 +172,11 @@ void Game::tick() {
     cameraRig_->follow(*camera_, *car_.getGroup());
     worldManager_->updateSkyPosition(camera_->position);
 
+    // ImGui frame start
+    if (debugUI_) debugUI_->newFrame();
+
     renderer_.render(*scene_, *camera_);
     blurOverlay_->render(renderer_);
+
+    if (debugUI_) debugUI_->render();
 }
