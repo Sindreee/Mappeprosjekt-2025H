@@ -73,7 +73,7 @@ private:
     float carHitCooldown_ = 0.0f;  // cooldown between registering hits
     const int carHitsToDie_ = 10;   // hits needed to die
     bool carDestroyed_ = false;    // car death state
-
+    
     int difficultyLevel_ = 1;      // Difficulty level (1, 2, or 3) - affects wolf speed
 };
 

@@ -67,6 +67,13 @@ void Game::initializeScene() {
             bearCollisionCooldown_ = 1.0f;
         }
     });
+
+    // Mushroom pickup handler - blur effect is already handled internally, just notify for future sound
+    worldManager_->setMushroomCollisionHandler([]{
+        // Blur level is already increased inside WorldManager
+        // This callback is for future extensibility (e.g., sound effects)
+        // std::cout << "Mushroom collected!" << std::endl; // Optional debug
+    });
 }
 
 void Game::setupLights() {

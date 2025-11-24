@@ -1,18 +1,19 @@
 #ifndef CAR_HPP
 #define CAR_HPP
-
-
 #include <threepp/threepp.hpp>
 #include <memory>
 #include <array>
+
 
 class Car {
 public:
     Car();
 
-    void update(float deltaTime);
+
     void setSpeed(float speed);
     void setRotation(float rotation);
+    void update(float deltaTime);
+
     std::shared_ptr<threepp::Group> getGroup();
     threepp::Vector3 getPosition() const;
     void reset(); // reset to initial state for restart

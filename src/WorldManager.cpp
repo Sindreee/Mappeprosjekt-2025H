@@ -96,6 +96,10 @@ void WorldManager::setBearCollisionHandler(std::function<void()> handler) {
     onBearCollision_ = std::move(handler);
 }
 
+void WorldManager::setMushroomCollisionHandler(std::function<void()> handler) {
+    onMushroomCollision_ = std::move(handler);
+}
+
 void WorldManager::spawnMushrooms(const WorldConfig& config) {
     auto mushroomTemplate = loader_.load("../Models/mushrooms/model.obj");
     if (!mushroomTemplate) throw std::runtime_error("Failed to load mushroom model");
@@ -120,6 +124,9 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
                             (*it)->handleCollision();
                             (*it)->removeFromScene(scene_);
                             mushrooms_.erase(it);
+
+                            // Notify Game that mushroom was collected
+                            if (onMushroomCollision_) onMushroomCollision_();
                             break;
                         }
                     }

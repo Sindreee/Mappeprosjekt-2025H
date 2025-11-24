@@ -43,6 +43,9 @@ public:
     // Let Game provide behavior when a bear collides with the car (e.g., slow down with cooldown)
     void setBearCollisionHandler(std::function<void()> handler);
 
+    // Let Game provide behavior when mushroom is collected (e.g., play sound, apply blur)
+    void setMushroomCollisionHandler(std::function<void()> handler);
+
     // Called per frame: updates wolves, bears, syncs bullets, processes all collisions
     void update(float dt, const threepp::Vector3& carPos,
                 const std::vector<std::shared_ptr<class Bullet>>& bullets);
@@ -95,6 +98,7 @@ private:
 
     std::function<void()> onWolfCollision_;
     std::function<void()> onBearCollision_;
+    std::function<void()> onMushroomCollision_;
 
     std::unordered_set<const threepp::Object3D*> registeredBullets_;
 
