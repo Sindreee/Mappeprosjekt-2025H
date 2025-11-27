@@ -61,6 +61,7 @@ public:
     void addSkyAndSun(float elevationDeg =15.0f, float azimuthDeg = 180.0f);
     void updateSkyPosition(const threepp::Vector3& cameraPos); // new: keep camera inside sky
     void setSkyYOffset(float yOffset) { skyYOffset_ = yOffset; }
+    void createGround(float groundsize);
 
     // Restart support: remove & respawn dynamic entities (mushrooms, bears, wolves) & reset blur
     void resetDynamicEntities();
@@ -94,7 +95,9 @@ private:
     std::shared_ptr<threepp::Object3D> car_;
     std::shared_ptr<threepp::Sky> sky_; // store sky to move with camera
     std::shared_ptr<threepp::DirectionalLight> sunLight_; // store sunlight for future tweaks
+    std::shared_ptr<threepp::Mesh> ground_; // store ground mesh for shadow receiving
     float skyYOffset_ = -1300.0f;
+
 
     std::function<void()> onWolfCollision_;
     std::function<void()> onBearCollision_;

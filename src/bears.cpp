@@ -43,6 +43,12 @@ void spawnBears(Scene& scene,
         bearClone->rotation.y = -math::PI * x * z;
         bearClone->scale.set(scale, scale, scale);
 
+        // Enable shadows on bear meshes
+        bearClone->traverseType<Mesh>([](Mesh& mesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+        });
+
         scene.add(bearClone);
 
         auto [dxr, dzr] = rand01();

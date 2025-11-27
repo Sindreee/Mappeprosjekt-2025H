@@ -56,7 +56,14 @@ Car::Car() {
                 wheels_[3] = backRightWheel;
                 skateboardModel_->add(wheels_[3]);
             }
+
+
         }
+    group_->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true; // Gjør at hjorten kan kaste skygge på rullebrettet (self-shadowing)
+    });
+
 }
 
 

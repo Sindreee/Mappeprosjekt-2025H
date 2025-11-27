@@ -17,6 +17,12 @@ Turret::Turret(const std::string& modelPath, float turnSpeedRad)
     if (!model_) {
         throw std::runtime_error("Failed to load turret model: " + modelPath);
     }
+
+    // Enable shadows on turret meshes
+    model_->traverseType<Mesh>([](Mesh& mesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+    });
 }
 
 void Turret::attachTo(Object3D& parent, const Vector3& localOffset) {

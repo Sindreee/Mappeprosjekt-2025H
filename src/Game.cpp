@@ -20,10 +20,11 @@ Game::Game()
       collisionDetection_(7.0f),
       turret_("../Models/turretV1bla4.obj", 3.0f) {
     renderer_.setClearColor(threepp::Color::white);
+    // Enable shadow mapping so lights like the sun can cast shadows
+    renderer_.shadowMap().enabled = true; // use default shadow type; PCFShadow not available in this version
     scene_->background = threepp::Color::aliceblue;
 
     initializeScene();
-    setupLights();
     setupTurret();
     configureEvents();
 
@@ -74,15 +75,6 @@ void Game::initializeScene() {
         // This callback is for future extensibility (e.g., sound effects)
         // std::cout << "Mushroom collected!" << std::endl; // Optional debug
     });
-}
-
-void Game::setupLights() {
-    auto light = threepp::DirectionalLight::create();
-    light->position.set(0, 15, 0);
-    scene_->add(light);
-
-    auto ambient = threepp::AmbientLight::create(threepp::Color::white, 0.5f);
-    scene_->add(ambient);
 }
 
 void Game::setupTurret() {

@@ -6,6 +6,8 @@
 #include <threepp/geometries/SphereGeometry.hpp>
 #include <threepp/materials/MeshBasicMaterial.hpp>
 #include "Random.hpp"
+#include "cmath"
+
 
 
 namespace {
@@ -20,6 +22,8 @@ WorldManager::WorldManager(threepp::Scene& scene, CollisionDetection& collisionD
 
 void WorldManager::spawnWorld(const WorldConfig& config) {
     lastConfig_ = config; // cache for resets
+
+    createGround(2000.0f);
     spawnMushrooms(config);
     spawnTrees(config); // trees considered static; not removed on reset
     spawnBears(config);
@@ -111,6 +115,12 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
         mushroomClone->position.set(x, -5, z);
         mushroomClone->scale.set(config.mushroomScale, config.mushroomScale, config.mushroomScale);
 
+        // Enable shadows on mushroom meshes
+        mushroomClone->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+        });
+
         auto mushroom = std::make_shared<GameObject>(mushroomClone, config.mushroomCollisionRadius, GameObjectType::MUSHROOM);
         mushroom->setOnCollision([this](GameObject&) {
             blurLevel_ = std::min(blurLevel_ + 3.0f, 8.0f);
@@ -151,6 +161,12 @@ void WorldManager::spawnTrees(const WorldConfig& config) {
         auto treeClone = treeTemplate->children[0]->clone();
         treeClone->position.set(x, 65, z);
         treeClone->scale.set(config.treeScale, config.treeScale, config.treeScale);
+
+        // Enable shadows on tree meshes
+        treeClone->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+        });
 
         auto tree = std::make_shared<GameObject>(treeClone, config.treeCollisionRadius, GameObjectType::TREE);
         scene_.add(tree->getModel());
@@ -230,12 +246,27 @@ void WorldManager::update(float dt, const threepp::Vector3& carPos,
     collisionDetection_.processAllPairs();
 }
 
+void WorldManager::createGround(float groundsize) {
+
+    auto geometry_ = threepp::PlaneGeometry::create(groundsize, groundsize);
+    geometry_->rotateX(-threepp::math::PI / 2);
+
+    auto material_ = threepp::MeshPhongMaterial::create();
+    material_->color = (threepp::Color::forestgreen);
+
+    auto ground_ = threepp::Mesh::create(geometry_, material_);
+    ground_->position.y = -7.0f;
+    ground_->receiveShadow = true;
+    scene_.add(ground_);
+}
+
 void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
     using namespace threepp;
 
+    // --- 1. Setup Sky (Beholdes som før) ---
     sky_ = Sky::create();
     sky_->scale.set(50000, 50000, 50000);
-    sky_->frustumCulled = false; // ensure sky never gets culled
+    sky_->frustumCulled = false;
 
     auto shaderMat = sky_->material()->as<ShaderMaterial>();
     if (shaderMat) {
@@ -244,18 +275,45 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
         float azim = azimuthDeg * DegToRad;
         Vector3 sunPos(std::cos(elev) * std::sin(azim), std::sin(elev), std::cos(elev) * std::cos(azim));
         shaderMat->uniforms["sunPosition"] = Uniform(sunPos);
-        // Do not override turbidity/rayleigh/mieCoefficients: keep Sky defaults
     }
 
     scene_.add(sky_);
 
-    // Directional sunlight aligned with the shader sun direction
+    // --- 2. Setup Sun Light ---
     Vector3 dir(0, 1, 0);
     if (shaderMat) {
         dir = shaderMat->uniforms["sunPosition"].value<Vector3>().clone().normalize();
     }
-    sunLight_ = DirectionalLight::create(threepp::Color::white, 1.6f);
-    sunLight_->position.copy(dir.multiplyScalar(10000.0f));
+
+    sunLight_ = DirectionalLight::create(threepp::Color::lightyellow, 2.2f);
+
+    // Plasser solen langt unna (5000 enheter)
+    float sunDistance = 5000.0f;
+    sunLight_->position.copy(dir.multiplyScalar(sunDistance));
+    sunLight_->castShadow = true;
+
+    // --- 3. SKYGGE-KONFIGURASJON ---
+
+    // A. Øk oppløsningen for skarpere skygger over stort område
+    sunLight_->shadow->mapSize.x = 4096;
+    sunLight_->shadow->mapSize.y = 4096;
+    sunLight_->shadow->bias = -0.0005f;
+
+    float viewSize = 2500.0f;
+
+    // VIKTIG ENDRING HER:
+    // Vi bruker std::make_unique i stedet for OrthographicCamera::create.
+    // Dette lager en unique_ptr som passer perfekt inn i shadow->camera.
+    sunLight_->shadow->camera = std::make_unique<threepp::OrthographicCamera>(
+        -viewSize, viewSize,  // left, right
+        viewSize, -viewSize,  // top, bottom
+        0.5f,                 // near
+        10000.0f              // far
+    );
+
+    // Oppdater matrisen for sikkerhets skyld (selv om konstruktøren ofte gjør det)
+    sunLight_->shadow->camera->updateProjectionMatrix();
+
     scene_.add(sunLight_);
 }
 

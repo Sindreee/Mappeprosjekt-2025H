@@ -46,4 +46,3 @@ add_executable(Mappeoppgave main.cpp
 
 target_link_libraries(Mappeoppgave PRIVATE MappeoppgaveLib)
 target_include_directories(Mappeoppgave PRIVATE "${CMAKE_SOURCE_DIR}/include")
-

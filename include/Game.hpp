@@ -30,7 +30,6 @@ public:
 private:
     friend class DebugUI; // allow UI panels to access internal state
     void initializeScene();
-    void setupLights();
     void setupTurret();
     void configureEvents();
     void tick();

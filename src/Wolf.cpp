@@ -38,6 +38,13 @@ void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
         auto wolf = (i == 0) ? wolfModel : wolfModel->clone();
         wolf->position.copy(spawnPositions[i]);
         wolf->scale.set(scale, scale, scale);
+
+        // Enable shadows on wolf meshes
+        wolf->traverseType<Mesh>([](Mesh& mesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+        });
+
         scene.add(wolf);
 
         Wolf w{wolf, Vector3{0, 0, 0}, maxSpeed, acceleration};
