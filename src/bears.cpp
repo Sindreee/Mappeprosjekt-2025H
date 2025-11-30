@@ -39,7 +39,7 @@ void spawnBears(Scene& scene,
         auto bearClone = (i == 0) ? bearModel : bearModel->clone();
 
         auto [x, z] = randPos();
-        bearClone->position.set(x, 0, z);
+        bearClone->position.set(x, 2, z);
         bearClone->rotation.y = -math::PI * x * z;
         bearClone->scale.set(scale, scale, scale);
 

@@ -17,6 +17,7 @@ struct Wolf {
     threepp::Vector3 targetOffset{0, 0, 0};
     int hits = 0;            // bullet collision hits
     bool alive = true;       // becomes false after 5 bullet hits
+
 };
 
 void spawnWolves(threepp::Scene& scene,

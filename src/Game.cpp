@@ -62,18 +62,17 @@ void Game::initializeScene() {
 
     // Bears and slowdown are fully handled inside WorldManager; we only provide the effect
     worldManager_->setBearCollisionHandler([this]{
-        if (bearCollisionCooldown_ <= 0.0f) {
-            controller_->adjustMaxSpeed(-15.0f);
-            if (controller_->getMaxSpeed() < 30.0f) controller_->setMaxSpeed(30.0f);
-            bearCollisionCooldown_ = 1.0f;
-        }
-    });
+    if (bearCollisionCooldown_ <= 0.0f) {
+        // Permanent slowdown: reduce the base max speed used in tick()
+        baseMaxSpeed_ = std::max(30.0f, baseMaxSpeed_ - 15.0f);
+        bearCollisionCooldown_ = 1.0f;
+    }
+});
 
     // Mushroom pickup handler - blur effect is already handled internally, just notify for future sound
-    worldManager_->setMushroomCollisionHandler([]{
+    worldManager_->setMushroomCollisionHandler([this]{
         // Blur level is already increased inside WorldManager
-        // This callback is for future extensibility (e.g., sound effects)
-        // std::cout << "Mushroom collected!" << std::endl; // Optional debug
+        // No permanent speed change here; speed boost is derived from blurLevel_ in tick()
     });
 }
 
@@ -114,7 +113,10 @@ void Game::restartGame() {
     carHitCount_ = 0;
     carHitCooldown_ = 0.0f;
     carDestroyed_ = false;
-    if (controller_) controller_->setMaxSpeed(150.0f);
+
+    baseMaxSpeed_ = 150.0f;                // reset base to default
+    if (controller_) controller_->setMaxSpeed(baseMaxSpeed_);
+
     car_.reset();
 
     // Apply difficulty level before respawning wolves
@@ -133,13 +135,56 @@ void Game::handleWolfHit() {
     carHitCooldown_ = 0.5f; // half second cooldown
     std::cout << "Deer hit by wolf (" << carHitCount_ << "/" << carHitsToDie_ << ")" << std::endl;
 
-    // Optional feedback: reduce max speed slightly each hit
-    if (controller_) controller_->adjustMaxSpeed(-5.0f);
+
 
     if (carHitCount_ >= carHitsToDie_) {
         carDestroyed_ = true;
         initialized_ = false; // stop game loop
         std::cout << "Deer Eaten Alive. YOU LOSE." << std::endl;
+    }
+}
+
+void Game::handleOutOfBoundsAndGravity(float dt) {
+    auto carPos = car_.getPosition();
+
+    // If the deer/car is outside the allowed XZ range, treat as out-of-bounds
+    bool outOfBounds = (carPos.x < -1500.f || carPos.x > 1500.f ||
+                        carPos.z < -1500.f || carPos.z > 1500.f);
+
+    // Static fall velocity so it persists across frames while falling
+    static float fallVelocityY = 0.0f;
+
+    if (outOfBounds) {
+        // Block any *new* acceleration from input by clamping controller max speed.
+        // We do NOT zero the car's existing velocity/rotation here so it can
+        // continue with its pre-existing horizontal motion while falling.
+        if (controller_) {
+            controller_->setMaxSpeed(0.0f);
+        }
+
+        // Increment carHitCount_ using carHitCooldown_ as delay
+        if (carHitCooldown_ <= 0.0f && !carDestroyed_) {
+            carHitCount_++;
+            carHitCooldown_ = 0.5f; // reuse the same cooldown as wolf hits
+            std::cout << "Deer out of bounds hit (" << carHitCount_ << "/" << carHitsToDie_ << ")" << std::endl;
+
+            if (carHitCount_ >= carHitsToDie_) {
+                carDestroyed_ = true;
+                initialized_ = false;
+                std::cout << "Deer fell out of the world. YOU LOSE." << std::endl;
+            }
+        }
+
+        // Apply simple gravity while "falling": accelerate straight down in Y
+        const float g = 9.81f;
+        fallVelocityY -= g * dt;        // accelerate downwards (negative Y)
+        carPos.y += fallVelocityY * dt; // integrate position
+
+        // Keep the current X/Z from the car's last motion, only move in Y here
+        car_.getGroup()->position.copy(carPos);
+    } else {
+        // Reset fall velocity when back in bounds (e.g., after restart)
+        fallVelocityY = 0.0f;
     }
 }
 
@@ -150,11 +195,21 @@ void Game::tick() {
     if (bearCollisionCooldown_ > 0.0f) bearCollisionCooldown_ = std::max(0.0f, bearCollisionCooldown_ - dt);
     if (carHitCooldown_ > 0.0f) carHitCooldown_ = std::max(0.0f, carHitCooldown_ - dt);
 
-    controller_->update(dt);
+    // Determine if car is currently out of bounds before applying input
+    auto carPos = car_.getPosition();
+    bool outOfBounds = (carPos.x < -1500.f || carPos.x > 1500.f ||
+                        carPos.z < -1500.f || carPos.z > 1500.f);
 
-    car_.setSpeed(controller_->getSpeed());
-    car_.setRotation(controller_->getRotation());
-    car_.update(dt);
+    // Only update controller and apply its movement while in-bounds
+    if (!outOfBounds) {
+        controller_->update(dt);
+        car_.setSpeed(controller_->getSpeed());
+        car_.setRotation(controller_->getRotation());
+        car_.update(dt);
+    }
+
+    // Handle leaving world bounds + falling behavior in a dedicated helper
+    handleOutOfBoundsAndGravity(dt);
 
     worldManager_->update(dt, car_.getPosition(), turret_.getBullets());
 
@@ -164,6 +219,12 @@ void Game::tick() {
     }
 
     blurOverlay_->update(blurLevel_, dt, clock_.getElapsedTime(), maxBlur_, blurDecayRate_);
+
+    // Derive mushroom speed bonus from current blur level so speed boost lasts as long as blur
+    float mushroomBonus = blurLevel_ * mushroomSpeedFactor_;
+    float newMaxSpeed = baseMaxSpeed_ + mushroomBonus;
+    // Only adjust controller max speed while in-bounds; once out, it stays clamped to 0 in handleOutOfBoundsAndGravity
+    if (controller_ && !outOfBounds) controller_->setMaxSpeed(newMaxSpeed);
 
     turret_.update(dt);
     turret_.updateBullets(dt, *scene_);

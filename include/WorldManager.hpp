@@ -16,9 +16,9 @@
 #include "bullet.hpp"
 
 struct WorldConfig {
-    int treeCount = 2000;
-    int mushroomCount = 600;
-    int bearCount = 600;
+    int treeCount = 1000;
+    int mushroomCount = 300;
+    int bearCount = 400;
 
     float treeScale = 40.0f;
     float mushroomScale = 20.0f;

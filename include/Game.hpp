@@ -35,6 +35,7 @@ private:
     void tick();
     void handleWolfHit(); // wolf melee damage handler
     void restartGame(); // extracted restart logic for reuse (UI + key)
+    void handleOutOfBoundsAndGravity(float dt); // New: handle out-of-bounds punishment & falling physics for the car/deer
 
     threepp::Canvas canvas_;
     threepp::GLRenderer renderer_;
@@ -63,8 +64,12 @@ private:
     threepp::Clock clock_;
 
     float blurLevel_ = 0.0f;
-    const float maxBlur_ = 8.0f;
+    const float maxBlur_ = 12.0f;
     const float blurDecayRate_ = 0.2f;
+
+    // Speed configuration
+    float baseMaxSpeed_ = 150.0f;      // default max speed without mushrooms
+    float mushroomSpeedFactor_ = 7.0f; // extra max speed per unit blur
 
     bool initialized_ = true;
 

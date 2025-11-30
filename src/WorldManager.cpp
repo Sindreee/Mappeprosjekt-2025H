@@ -11,7 +11,7 @@
 
 
 namespace {
-std::pair<float, float> randomPos(float min = -2000.0f, float max = 2000.f) {
+std::pair<float, float> randomPos(float min = -1500.0f, float max = 1500.f) {
     return rnd::uniform2(min, max);
 }
 }
@@ -23,7 +23,7 @@ WorldManager::WorldManager(threepp::Scene& scene, CollisionDetection& collisionD
 void WorldManager::spawnWorld(const WorldConfig& config) {
     lastConfig_ = config; // cache for resets
 
-    createGround(2000.0f);
+    createGround(3000.0f);
     spawnMushrooms(config);
     spawnTrees(config); // trees considered static; not removed on reset
     spawnBears(config);
@@ -112,14 +112,10 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
     for (int i = 0; i < config.mushroomCount; ++i) {
         auto [x, z] = randomPos();
         auto mushroomClone = mushroomTemplate->children[0]->clone();
-        mushroomClone->position.set(x, -5, z);
+        mushroomClone->position.set(x, -4, z);
         mushroomClone->scale.set(config.mushroomScale, config.mushroomScale, config.mushroomScale);
 
-        // Enable shadows on mushroom meshes
-        mushroomClone->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-        });
+
 
         auto mushroom = std::make_shared<GameObject>(mushroomClone, config.mushroomCollisionRadius, GameObjectType::MUSHROOM);
         mushroom->setOnCollision([this](GameObject&) {
@@ -200,7 +196,7 @@ void WorldManager::spawnWolvesDefault() {
     float baseSpeed = 50.0f + (difficultyLevel_ - 1) * 40.0f;
     float baseAcceleration = 150.0f + (difficultyLevel_ - 1) * 50.0f;
 
-    spawnWolves(scene_, wolves_, 3, "../Models/wolf/model.obj", 5.0f, baseSpeed, baseAcceleration);
+    spawnWolves(scene_, wolves_, 10, "../Models/wolf/model.obj", 5.0f, baseSpeed, baseAcceleration);
     for (auto& w : wolves_) {
         collisionDetection_.addCollider(w.object, 2.0f, ColliderType::WOLF);
     }
@@ -222,7 +218,7 @@ void WorldManager::syncBullets(const std::vector<std::shared_ptr<class Bullet>>&
                     for (auto& w : wolves_) {
                         if (w.object.get() == other.object.get() && w.alive) {
                             w.hits++;
-                            w.maxSpeed += 50.0f;
+                            w.maxSpeed += 20.0f;
                             if (w.hits >= 5) {
                                 w.alive = false;
                                 w.object->visible = false;
@@ -255,7 +251,7 @@ void WorldManager::createGround(float groundsize) {
     material_->color = (threepp::Color::forestgreen);
 
     auto ground_ = threepp::Mesh::create(geometry_, material_);
-    ground_->position.y = -7.0f;
+    ground_->position.y = -4.4f;
     ground_->receiveShadow = true;
     scene_.add(ground_);
 }
@@ -285,7 +281,7 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
         dir = shaderMat->uniforms["sunPosition"].value<Vector3>().clone().normalize();
     }
 
-    sunLight_ = DirectionalLight::create(threepp::Color::lightyellow, 2.2f);
+    sunLight_ = DirectionalLight::create(threepp::Color::lightyellow, 1.7f);
 
     // Plasser solen langt unna (5000 enheter)
     float sunDistance = 5000.0f;
@@ -297,9 +293,10 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
     // A. Øk oppløsningen for skarpere skygger over stort område
     sunLight_->shadow->mapSize.x = 4096;
     sunLight_->shadow->mapSize.y = 4096;
+    sunLight_->shadow->radius = 2.0f;
     sunLight_->shadow->bias = -0.0005f;
 
-    float viewSize = 2500.0f;
+    float viewSize = 1500.0f;
 
     // VIKTIG ENDRING HER:
     // Vi bruker std::make_unique i stedet for OrthographicCamera::create.
@@ -308,7 +305,7 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
         -viewSize, viewSize,  // left, right
         viewSize, -viewSize,  // top, bottom
         0.5f,                 // near
-        10000.0f              // far
+        7000.0f              // far
     );
 
     // Oppdater matrisen for sikkerhets skyld (selv om konstruktøren ofte gjør det)
