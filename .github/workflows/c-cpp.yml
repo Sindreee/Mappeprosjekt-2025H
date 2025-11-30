@@ -1,8 +1,4 @@
-# .github/workflows/ci.yml
-# CI-oppsett kreditert threepp-prosjektet (https://github.com/markaren/threepp)
-# Basert på deres Build-instruksjoner.
-
-name: Build & Test
+name: C++ CI
 
 on:
   push:
@@ -10,74 +6,42 @@ on:
   pull_request:
     branches: [ main, master ]
 
-env:
-  BUILD_DIR: build
-  CMAKE_BUILD_PARALLEL_LEVEL: 4
-
 jobs:
   build:
-    name: Build (${{ matrix.os }} / ${{ matrix.build_type }})
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        build_type: [Debug, Release]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # --- Linux dependencies for OpenGL + X11 (needed by threepp GLFW) ---
-      - name: Install dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build \
-            libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev libgl1-mesa-dev
+    # --- LINUX SETUP ---
+    - name: Install Dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
-      # --- macOS dependencies ---
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install cmake ninja
+    # --- CONFIGURATION ---
+    - name: Configure CMake
+      # Vi lar CMake velge standard generator (Makefiles på Linux, Visual Studio på Windows)
+      # Dette er mye tryggere enn å tvinge Ninja.
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-      # --- Windows dependencies ---
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-          choco install -y ninja
+    # --- BUILDING ---
+    - name: Build Project
+      # --config Release er nødvendig for Windows (Multi-configuration generator)
+      run: cmake --build build --config Release --parallel 4
 
-      # --- Configure ---
-      - name: Configure CMake
-        run: |
-          cmake -S . -B ${{ env.BUILD_DIR }} \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-
-      # --- Build everything (including MappeoppgaveLib) ---
-      - name: Build
-        run: |
-          cmake --build ${{ env.BUILD_DIR }}
-
-      # --- Tests if you ever add them ---
-      - name: Run tests
-        run: |
-          cd ${{ env.BUILD_DIR }}
-          ctest --output-on-failure || echo "Ingen tester funnet"
-        continue-on-error: true
-
-      # --- Collect artifacts for debugging (optional) ---
-      - name: Upload Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Build-${{ matrix.os }}-${{ matrix.build_type }}
-          path: ${{ env.BUILD_DIR }}/
-
+    # --- TESTING ---
+    - name: Run Tests
+      # Vi navigerer inn i build-mappen og kjører ctest.
+      # --output-on-failure gjør at vi ser feilmeldingen hvis en test feiler.
+      # -C Release forteller Windows at den skal kjøre Release-versjonen.
+      run: |
+        cd build
+        ctest -C Release --output-on-failure --verbose
