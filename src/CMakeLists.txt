@@ -3,7 +3,7 @@ add_library(MappeoppgaveLib
         carKeyController.cpp
         turret.cpp
         CollisionDetection.cpp
-        bears.cpp
+        Bear.cpp
         bullet.cpp
         GameObject.cpp
         Game.cpp

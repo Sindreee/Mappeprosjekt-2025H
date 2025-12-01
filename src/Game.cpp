@@ -3,8 +3,6 @@
 #include "DebugUI.hpp"
 #include <iostream>
 
-struct GLFWwindow;
-
 using namespace threepp;
 
 Game::Game()
@@ -48,19 +46,15 @@ void Game::initializeScene() {
     // Original static sun setup
     worldManager_->addSkyAndSun(35.0f, 135.0f);
 
-    // --- CALLBACKS ---
     worldManager_->registerCar(car_.getGroup(), Config::CAR_COLLISION_RADIUS, [this]{
         car_.takeDamage(1);
     });
 
-    worldManager_->setMushroomCollisionHandler([this]{
-        // Only handles visual/audio cue here. Speed boost logic is in tick()
-    });
+    worldManager_->setMushroomCollisionHandler([this]{});
 
     worldManager_->setBearCollisionHandler([this]{
         if (bearCollisionCooldown_ <= 0.0f) {
-            car_.modifyBaseSpeed(-15.0f); // Permanent penalty (until restart)
-            std::cout << "Hit bear! Speed reduced." << std::endl;
+            car_.modifyBaseSpeed(-15.0f);
             bearCollisionCooldown_ = 1.0f;
         }
     });
@@ -106,7 +100,6 @@ void Game::restartGame() {
     worldManager_->resetDynamicEntities();
 
     clock_.start();
-    std::cout << "Game restarted! Difficulty: " << difficultyLevel_ << std::endl;
 }
 
 void Game::tick() {
@@ -115,12 +108,9 @@ void Game::tick() {
     float dt = clock_.getDelta();
     if (bearCollisionCooldown_ > 0.0f) bearCollisionCooldown_ -= dt;
 
-    // --- LOGIC FIX: Decay speed boost with blur ---
-    // This prevents infinite speed accumulation. As blur fades, speed returns to normal.
     float currentBoost = Config::MUSHROOM_SPEED_BOOST * blurLevel_;
     car_.applySpeedBoost(currentBoost);
 
-    // 1. INPUT
     if (!car_.isDead() && !car_.isFalling()) {
         controller_->setMaxSpeed(car_.getMaxSpeed());
         controller_->update(dt);
@@ -131,24 +121,18 @@ void Game::tick() {
         car_.setSpeed(0.0f);
     }
 
-    // 2. BIL
     car_.update(dt);
 
-    // 3. GAME OVER
     if (car_.isDead() && !carDestroyed_) {
-        std::cout << "GAME OVER! The deer died." << std::endl;
         carDestroyed_ = true;
     }
 
-    // 4. VERDEN
     worldManager_->update(dt, car_.getPosition(), turret_.getBullets());
 
     if (worldManager_->allWolvesDead()) {
-        std::cout << "VICTORY! All wolves eliminated." << std::endl;
         initialized_ = false;
     }
 
-    // 5. EFFEKTER
     blurOverlay_->update(blurLevel_, dt, clock_.getElapsedTime(), Config::MAX_BLUR, 0.2f);
 
     turret_.update(dt);
@@ -157,7 +141,6 @@ void Game::tick() {
     cameraRig_->follow(*camera_, *car_.getGroup());
     worldManager_->updateSkyPosition(camera_->position);
 
-    // 6. RENDER
     if (debugUI_) debugUI_->newFrame();
     renderer_.render(*scene_, *camera_);
     blurOverlay_->render(renderer_);

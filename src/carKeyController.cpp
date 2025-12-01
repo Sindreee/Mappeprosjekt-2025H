@@ -1,8 +1,3 @@
-//
-// Created by sindr on 10/21/2025.
-//
-#include "carKeyController.hpp"
-
 #include "carKeyController.hpp"
 #include <cmath>
 
@@ -46,21 +41,20 @@ void KeyController::update(float dt) {
     float dirX = -std::sin(object_->rotation.y);
     float dirZ = -std::cos(object_->rotation.y);
 
-
-
     Vector3 newPos = object_->position;
     newPos.x += dirX * velocity_ * dt;
     newPos.z += dirZ * velocity_ * dt;
 
-    if (!collisionDetection_->checkCollision(newPos)) {
+    // Endring her: Send med object_ som vi skal ignorere (oss selv)
+    if (!collisionDetection_->isBlocked(newPos, 5.0f, object_)) {
         object_->position = newPos;
     } else {
-        velocity_ = 0.0f;
+        velocity_ = -velocity_ * 0.5f;
     }
 }
-float KeyController::getSpeed() const {
-    return velocity_;
-}
+
+float KeyController::getSpeed() const { return velocity_; }
+
 float KeyController::getRotation() const {
     float rotation = 0.0f;
     if (keyState_.left) rotation += 1.0f;
@@ -78,6 +72,4 @@ void KeyController::adjustMaxSpeed(float delta) {
     setMaxSpeed(maxSpeed_ + delta);
 }
 
-float KeyController::getMaxSpeed() const {
-    return maxSpeed_;
-}
+float KeyController::getMaxSpeed() const { return maxSpeed_; }

@@ -1,21 +1,13 @@
 #include "WorldManager.hpp"
 #include "GameConstants.hpp"
 #include "Random.hpp"
-#include <threepp/objects/Sky.hpp>
 #include <threepp/materials/ShaderMaterial.hpp>
-#include <threepp/materials/MeshBasicMaterial.hpp>
-#include <threepp/geometries/SphereGeometry.hpp>
+#include <threepp/geometries/PlaneGeometry.hpp>
+#include <threepp/materials/MeshPhongMaterial.hpp>
 #include <algorithm>
-#include <stdexcept>
 #include <cmath>
 
 using namespace threepp;
-
-namespace {
-    std::pair<float, float> randomPos(float min = -Config::WORLD_BOUNDS, float max = Config::WORLD_BOUNDS) {
-        return rnd::uniform2(min, max);
-    }
-}
 
 WorldManager::WorldManager(Scene& scene, CollisionDetection& collisionDetection,
                            AssimpLoader& loader, float& blurLevel)
@@ -23,7 +15,6 @@ WorldManager::WorldManager(Scene& scene, CollisionDetection& collisionDetection,
 
 void WorldManager::spawnWorld(const WorldConfig& config) {
     lastConfig_ = config;
-
     if (!ground_) createGround(Config::WORLD_SIZE);
 
     spawnTrees(config);
@@ -33,37 +24,44 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
 }
 
 void WorldManager::update(float dt, const Vector3& carPos, const std::vector<std::shared_ptr<Bullet>>& bullets) {
-    for (auto& wolf : wolves_) {
-        wolf.update(dt, carPos);
-    }
-    updateBears(bears_, dt);
+    for (auto& wolf : wolves_) wolf.update(dt, carPos);
+    for (auto& bear : bears_) bear.update(dt);
+
     syncBullets(bullets);
     collisionDetection_.processAllPairs();
 }
 
-void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bullets) {
-    for (const auto& bullet : bullets) {
-        if (!bullet->isAlive()) continue;
+void WorldManager::spawnTrees(const WorldConfig& config) {
+    auto model = loader_.load("../Models/model.obj");
+    if (!model) return;
 
-        auto* ptr = bullet->getModel().get();
-        if (registeredBullets_.insert(ptr).second) {
-            collisionDetection_.addCollider(bullet->getModel(), 5.0f, ColliderType::BULLET,
-                [this](const Collider& b, const Collider& other){
-                    if (other.type == ColliderType::WOLF) {
-                        handleBulletWolfCollision(other.object.get());
-                        b.object->visible = false;
-                    }
-                });
-        }
+    trees_.reserve(config.treeCount);
+    for (int i = 0; i < config.treeCount; ++i) {
+        auto pos = rnd::uniform2(-Config::WORLD_BOUNDS, Config::WORLD_BOUNDS);
+        auto clone = model->children[0]->clone();
+
+        clone->position.set(pos.first, 65, pos.second);
+        clone->scale.set(config.treeScale, config.treeScale, config.treeScale);
+
+        clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
+
+        auto tree = std::make_shared<GameObject>(clone, config.treeCollisionRadius, GameObjectType::TREE);
+        scene_.add(tree->getModel());
+        trees_.push_back(tree);
+
+        collisionDetection_.addCollider(clone, config.treeCollisionRadius, ColliderType::TREE);
     }
 }
 
-void WorldManager::handleBulletWolfCollision(threepp::Object3D* wolfMesh) {
-    for (auto& w : wolves_) {
-        if (w.getModel().get() == wolfMesh && w.isAlive()) {
-            w.takeDamage();
-            break;
-        }
+void WorldManager::spawnBears(const WorldConfig& config) {
+    bears_ = createBears(scene_, config.bearCount, "../Models/Mesh_Bear.obj", config.bearScale);
+    for (auto& b : bears_) {
+        collisionDetection_.addCollider(b.getModel(), config.bearCollisionRadius, ColliderType::BEAR,
+            [this](const Collider&, const Collider& other){
+                if (other.type == ColliderType::CAR && onBearCollision_) {
+                    onBearCollision_();
+                }
+            });
     }
 }
 
@@ -80,9 +78,9 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
 
     mushrooms_.reserve(config.mushroomCount);
     for (int i = 0; i < config.mushroomCount; ++i) {
-        auto [x, z] = randomPos();
+        auto pos = rnd::uniform2(-Config::WORLD_BOUNDS, Config::WORLD_BOUNDS);
         auto clone = model->children[0]->clone();
-        clone->position.set(x, -4, z);
+        clone->position.set(pos.first, -4, pos.second);
         clone->scale.set(config.mushroomScale, config.mushroomScale, config.mushroomScale);
 
         clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
@@ -112,68 +110,37 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
     }
 }
 
-void WorldManager::spawnTrees(const WorldConfig& config) {
-    auto model = loader_.load("../Models/model.obj");
-    if (!model) return;
+void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bullets) {
+    for (const auto& bullet : bullets) {
+        if (!bullet->isAlive()) continue;
 
-    std::vector<Vector3> positions;
-    trees_.reserve(config.treeCount);
-
-    for (int i = 0; i < config.treeCount; ++i) {
-        auto [x, z] = randomPos();
-        auto clone = model->children[0]->clone();
-        clone->position.set(x, 65, z);
-        clone->scale.set(config.treeScale, config.treeScale, config.treeScale);
-
-        clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
-
-        auto tree = std::make_shared<GameObject>(clone, config.treeCollisionRadius, GameObjectType::TREE);
-        scene_.add(tree->getModel());
-        trees_.push_back(tree);
-
-        positions.emplace_back(x, 60, z);
-        collisionDetection_.addCollider(clone, config.treeCollisionRadius, ColliderType::TREE);
-    }
-    collisionDetection_.setObstacles(positions);
-}
-
-void WorldManager::spawnBears(const WorldConfig& config) {
-    ::spawnBears(scene_, bears_, config.bearCount, "../Models/Mesh_Bear.obj", config.bearScale);
-    for (auto& b : bears_) {
-        collisionDetection_.addCollider(b.object, config.bearCollisionRadius, ColliderType::BEAR,
-            [this](const Collider&, const Collider& other){
-                if (other.type == ColliderType::CAR && onBearCollision_) {
-                    onBearCollision_();
-                }
-            });
+        auto* ptr = bullet->getModel().get();
+        if (registeredBullets_.insert(ptr).second) {
+            collisionDetection_.addCollider(bullet->getModel(), 5.0f, ColliderType::BULLET,
+                [this](const Collider& b, const Collider& other){
+                    if (other.type == ColliderType::WOLF) {
+                        handleBulletWolfCollision(other.object.get());
+                        b.object->visible = false;
+                    }
+                });
+        }
     }
 }
 
-void WorldManager::resetDynamicEntities() {
-    removeMushrooms();
-    removeBears();
-    removeWolves();
-
-    collisionDetection_.removeCollidersOfType(ColliderType::MUSHROOM);
-    collisionDetection_.removeCollidersOfType(ColliderType::BEAR);
-    collisionDetection_.removeCollidersOfType(ColliderType::WOLF);
-    collisionDetection_.cleanupInactive();
-
-    registeredBullets_.clear();
-    blurLevel_ = 0.0f;
-
-    spawnMushrooms(lastConfig_);
-    spawnBears(lastConfig_);
-    spawnWolvesDefault();
+void WorldManager::handleBulletWolfCollision(threepp::Object3D* wolfMesh) {
+    for (auto& w : wolves_) {
+        if (w.getModel().get() == wolfMesh && w.isAlive()) {
+            w.takeDamage();
+            break;
+        }
+    }
 }
 
 void WorldManager::createGround(float groundsize) {
     auto geometry = PlaneGeometry::create(groundsize, groundsize);
     geometry->rotateX(-math::PI / 2);
-
     auto material = MeshPhongMaterial::create();
     material->color = Color::forestgreen;
-
     ground_ = Mesh::create(geometry, material);
     ground_->position.y = -4.4f;
     ground_->receiveShadow = true;
@@ -199,9 +166,7 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
 
         float viewSize = 2500.0f;
         sunLight_->shadow->camera = std::make_unique<OrthographicCamera>(
-            -viewSize, viewSize, viewSize, -viewSize,
-            0.5f,
-            10000.0f
+            -viewSize, viewSize, viewSize, -viewSize, 0.5f, 10000.0f
         );
         sunLight_->shadow->camera->updateProjectionMatrix();
 
@@ -218,20 +183,34 @@ void WorldManager::updateSkyPosition(const Vector3& cameraPos) {
     }
 }
 
-// Helpers
+void WorldManager::resetDynamicEntities() {
+    removeMushrooms();
+    removeBears();
+    removeWolves();
+
+    collisionDetection_.removeCollidersOfType(ColliderType::MUSHROOM);
+    collisionDetection_.removeCollidersOfType(ColliderType::BEAR);
+    collisionDetection_.removeCollidersOfType(ColliderType::WOLF);
+    collisionDetection_.cleanupInactive();
+
+    registeredBullets_.clear();
+    blurLevel_ = 0.0f;
+
+    spawnMushrooms(lastConfig_);
+    spawnBears(lastConfig_);
+    spawnWolvesDefault();
+}
+
 void WorldManager::removeMushrooms() {
     for(auto& m : mushrooms_) if(m) m->removeFromScene(scene_);
     mushrooms_.clear();
 }
 void WorldManager::removeBears() {
-    for(auto& b : bears_) if(b.object && b.object->parent) b.object->parent->remove(*b.object);
+    for(auto& b : bears_) if(b.getModel() && b.getModel()->parent) b.getModel()->parent->remove(*b.getModel());
     bears_.clear();
 }
 void WorldManager::removeWolves() {
-    for(auto& w : wolves_) {
-        auto m = w.getModel();
-        if(m && m->parent) m->parent->remove(*m);
-    }
+    for(auto& w : wolves_) if(w.getModel() && w.getModel()->parent) w.getModel()->parent->remove(*w.getModel());
     wolves_.clear();
 }
 
@@ -248,9 +227,7 @@ void WorldManager::registerCar(const std::shared_ptr<threepp::Object3D>& car, fl
     onWolfCollision_ = std::move(onWolfCollision);
     collisionDetection_.addCollider(car_, radius, ColliderType::CAR,
         [this](const Collider&, const Collider& other){
-            if (other.type == ColliderType::WOLF && onWolfCollision_) {
-                onWolfCollision_();
-            }
+            if (other.type == ColliderType::WOLF && onWolfCollision_) onWolfCollision_();
         });
 }
 void WorldManager::setBearCollisionHandler(std::function<void()> handler) { onBearCollision_ = std::move(handler); }

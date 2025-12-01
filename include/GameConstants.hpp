@@ -4,8 +4,7 @@
 
 #ifndef MAPPEOPPGAVE_GAMECONSTANTS_HPP
 #define MAPPEOPPGAVE_GAMECONSTANTS_HPP
-#ifndef GAMECONSTANTS_HPP
-#define GAMECONSTANTS_HPP
+
 
 namespace Config {
     // World Settings
@@ -30,6 +29,5 @@ namespace Config {
     constexpr float MAX_BLUR = 12.0f;
 }
 
-#endif // GAMECONSTANTS_HPP
 
 #endif //MAPPEOPPGAVE_GAMECONSTANTS_HPP
