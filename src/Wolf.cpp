@@ -1,108 +1,113 @@
-//
-// Created by sindr on 11/18/2025.
-//
 #include "Wolf.hpp"
+#include "GameConstants.hpp"
 #include <threepp/loaders/AssimpLoader.hpp>
-#include <random>
+#include <cmath>
+#include "Random.hpp" // Make sure Random.hpp is available or use std::rand
+
 
 using namespace threepp;
 
-void spawnWolves(Scene& scene, std::vector<Wolf>& outWolves, int count,
-                 const std::string& modelPath, float scale, float maxSpeed, float acceleration) {
-    AssimpLoader loader;
-    auto wolfModel = loader.load(modelPath);
+Wolf::Wolf(std::shared_ptr<Object3D> mesh, float maxSpeed, float acceleration, Vector3 offset)
+    : object_(std::move(mesh)), maxSpeed_(maxSpeed), acceleration_(acceleration), targetOffset_(offset)
+{
+    // Initialize with a random value to desynchronize wolf movements
+    noiseOffset_ = rnd::uniform(0.0f, 100.0f);
+}
 
-    if (!wolfModel) {
-        return; // Failed to load
-    }
+void Wolf::takeDamage() {
+    if (!alive_) return;
+    hits_++;
+    // Wolves get faster/angrier when hit
+    maxSpeed_ += 20.0f;
 
-    outWolves.reserve(count);
-
-    // Spawn positions for 3 wolves
-    Vector3 spawnPositions[] = {
-        {300.0f, 0.0f, 300.0f},
-        {350.0f, 0.0f, 320.0f},
-        {230.0f, 0.0f, 330.0f}
-    };
-
-    // Predefined offsets so they don't stack directly on target
-    Vector3 targetOffsets[] = {
-        { 6.0f, 0.0f,  10.0f},
-        {0.0f, 0.0f, -15.0f},
-        { -5.0f, 0.0f, -7.0f}
-    };
-
-
-
-    for (int i = 0; i < count && i < 3; ++i) {
-        auto wolf = (i == 0) ? wolfModel : wolfModel->clone();
-        wolf->position.copy(spawnPositions[i]);
-        wolf->scale.set(scale, scale, scale);
-
-        // Enable shadows on wolf meshes
-        wolf->traverseType<Mesh>([](Mesh& mesh) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-        });
-
-        scene.add(wolf);
-
-        Wolf w{wolf, Vector3{0, 0, 0}, maxSpeed, acceleration};
-        w.targetOffset = targetOffsets[i];
-
-
-        outWolves.push_back(std::move(w));
+    if (hits_ >= hitsToDie_) {
+        alive_ = false;
+        object_->visible = false;
     }
 }
 
-void updateWolves(std::vector<Wolf>& wolves, float dt, const threepp::Vector3& targetPos) {
-    for (auto& wolf : wolves) {
-        if (!wolf.alive) continue; // dead wolves do not move
+void Wolf::update(float dt, const Vector3& targetPos) {
+    if (!alive_) return;
 
+    timeAlive_ += dt;
 
-        // Compute wobble vector in the local XZ plane relative to world axes
+    // --- Unpredictable Movement Logic ---
+    // 1. Calculate base target (Car position + static offset)
+    Vector3 baseTarget = targetPos + targetOffset_;
 
+    // 2. Add time-varying noise ("Wobble")
+    // We use sin/cos at different frequencies to create a chaotic path
+    float wobbleX = std::sin(timeAlive_ * 2.0f + noiseOffset_) * 20.0f; // Fast wobble
+    float wobbleZ = std::cos(timeAlive_ * 1.5f + noiseOffset_ * 0.5f) * 20.0f; // Slower wobble
 
-        // Adjusted target includes constant offset and wobble
-        Vector3 adjustedTarget = targetPos + wolf.targetOffset ;
+    // 3. Add a larger, slower "Patrol" variance
+    float driftX = std::sin(timeAlive_ * 0.5f) * 50.0f;
+    float driftZ = std::cos(timeAlive_ * 0.3f) * 50.0f;
 
-        // Calculate direction to adjusted target
-        Vector3 direction = adjustedTarget - wolf.object->position;
-        direction.y = 0;  // Keep on ground plane
+    Vector3 finalTarget = baseTarget;
+    finalTarget.x += wobbleX + driftX;
+    finalTarget.z += wobbleZ + driftZ;
 
-        float distanceToTarget = direction.length();
+    // --- Steering Behavior ---
+    Vector3 direction = finalTarget - object_->position;
+    direction.y = 0;
 
-        if (distanceToTarget > 0.1f) {
-            direction.normalize();
+    float dist = direction.length();
 
-            // Apply acceleration towards target
-            Vector3 desiredVelocity = direction * wolf.maxSpeed;
-            Vector3 steering = desiredVelocity - wolf.velocity;
+    if (dist > 1.0f) { // Don't jitter when very close
+        direction.normalize();
+        Vector3 desiredVel = direction * maxSpeed_;
+        Vector3 steering = desiredVel - velocity_;
 
-            // Limit acceleration
-            float steeringLength = steering.length();
-            float maxDeltaV = wolf.acceleration * dt;
-            if (steeringLength > maxDeltaV) {
-                steering.normalize();
-                steering *= maxDeltaV;
-            }
+        // Limit acceleration (makes movement smoother/weightier)
+        if (steering.length() > acceleration_ * dt) {
+            steering.normalize().multiplyScalar(acceleration_ * dt);
+        }
 
-            wolf.velocity += steering;
+        velocity_ += steering;
+        velocity_ *= 0.98f; // Friction/Damping
 
-            // Apply velocity with damping for smooth movement
-            wolf.velocity *= 0.985f; // Slight damping
+        object_->position += velocity_ * dt;
 
-            // Update position
-            wolf.object->position += wolf.velocity * dt;
-
-            // Make wolf face movement direction
-            if (wolf.velocity.length() > 0.1f) {
-                float angle = std::atan2(wolf.velocity.x, wolf.velocity.z);
-                wolf.object->rotation.y = angle;
-            }
-        } else {
-            // Slow down when very close
-            wolf.velocity *= 0.9f;
+        // Rotation: Face direction of movement
+        if (velocity_.length() > 0.1f) {
+            float targetRotation = std::atan2(velocity_.x, velocity_.z);
+            // Smooth rotation could be added here, but direct set is fine for now
+            object_->rotation.y = targetRotation;
         }
     }
+}
+
+std::vector<Wolf> createWolves(Scene& scene, int count, const std::string& modelPath, float difficultyFactor) {
+    AssimpLoader loader;
+    auto model = loader.load(modelPath);
+    std::vector<Wolf> wolves;
+
+    if (!model) return wolves;
+
+    float baseSpeed = 50.0f + (difficultyFactor - 1) * 40.0f;
+    float baseAcc = 150.0f + (difficultyFactor - 1) * 50.0f;
+
+    for (int i = 0; i < count; ++i) {
+        auto wMesh = model->clone();
+
+        // Random spawn circle around center
+        float angle = rnd::uniform(0.0f, math::PI * 2.0f);
+        float dist = rnd::uniform(300.0f, 600.0f);
+        wMesh->position.set(std::cos(angle) * dist, 0.f, std::sin(angle) * dist);
+
+        wMesh->scale.set(5.0f, 5.0f, 5.0f);
+
+        wMesh->traverseType<Mesh>([](Mesh& m){
+            m.castShadow = true; m.receiveShadow = true;
+        });
+
+        scene.add(wMesh);
+
+        // Give each wolf a unique offset so they don't stack directly on the car
+        Vector3 offset(rnd::uniform(-15.f, 15.f), 0, rnd::uniform(-15.f, 15.f));
+
+        wolves.emplace_back(wMesh, baseSpeed, baseAcc, offset);
+    }
+    return wolves;
 }

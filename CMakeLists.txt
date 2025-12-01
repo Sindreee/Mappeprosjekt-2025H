@@ -42,7 +42,8 @@ FetchContent_MakeAvailable(imgui)
 add_subdirectory(src)
 
 add_executable(Mappeoppgave main.cpp
-        include/Wolf.hpp)
+        include/Wolf.hpp
+        include/GameConstants.hpp)
 
 target_link_libraries(Mappeoppgave PRIVATE MappeoppgaveLib)
 target_include_directories(Mappeoppgave PRIVATE "${CMAKE_SOURCE_DIR}/include")

@@ -35,7 +35,7 @@ private:
     std::vector<std::shared_ptr<Bullet>> bullets_;
     float turnSpeed_;
     float shootCooldown_ = 0.0f;
-    float shootDelay_ = 0.5f;
+    float shootDelay_ = 0.4f;
     struct KeyState { bool left = false; bool right = false; bool shoot = false; } keys_;
 };
 

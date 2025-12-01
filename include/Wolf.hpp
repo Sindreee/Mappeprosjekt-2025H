@@ -4,32 +4,48 @@
 
 #ifndef MAPPEOPPGAVE_WOLF_HPP
 #define MAPPEOPPGAVE_WOLF_HPP
-
 #include <threepp/threepp.hpp>
-#include <vector>
 #include <memory>
+#include <string>
+#include <vector> // Changed from forward decl to include for std::vector in createWolves
 
-struct Wolf {
-    std::shared_ptr<threepp::Object3D> object;
-    threepp::Vector3 velocity{0, 0, 0};
-    float maxSpeed;
-    float acceleration;
-    threepp::Vector3 targetOffset{0, 0, 0};
-    int hits = 0;            // bullet collision hits
-    bool alive = true;       // becomes false after 5 bullet hits
 
+// Forward declaration
+namespace threepp { class Scene; }
+
+class Wolf {
+public:
+    Wolf(std::shared_ptr<threepp::Object3D> mesh,
+         float maxSpeed,
+         float acceleration,
+         threepp::Vector3 offset);
+
+    void update(float dt, const threepp::Vector3& targetPos);
+    void takeDamage();
+
+    // Getters needed for DebugUI
+    bool isAlive() const { return alive_; }
+    int getHits() const { return hits_; }
+    std::shared_ptr<threepp::Object3D> getModel() const { return object_; }
+
+    void setMaxSpeed(float speed) { maxSpeed_ = speed; }
+
+private:
+    std::shared_ptr<threepp::Object3D> object_;
+    threepp::Vector3 velocity_{0, 0, 0};
+    float maxSpeed_;
+    float acceleration_;
+    threepp::Vector3 targetOffset_;
+
+    // New: Unique random offset for movement noise
+    float noiseOffset_;
+    float timeAlive_ = 0.0f;
+
+    int hits_ = 0;
+    bool alive_ = true;
+    const int hitsToDie_ = 5;
 };
 
-void spawnWolves(threepp::Scene& scene,
-                 std::vector<Wolf>& outWolves,
-                 int count,
-                 const std::string& modelPath,
-                 float scale,
-                 float maxSpeed,
-                 float acceleration);
-
-void updateWolves(std::vector<Wolf>& wolves,
-                  float dt,
-                  const threepp::Vector3& targetPos);
+std::vector<Wolf> createWolves(threepp::Scene& scene, int count, const std::string& modelPath, float difficultyFactor);
 
 #endif //MAPPEOPPGAVE_WOLF_HPP

@@ -4,6 +4,7 @@
 #include "carKeyController.hpp"
 #include "car.hpp"
 #include "Wolf.hpp"
+#include "GameConstants.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -58,10 +59,47 @@ void DebugUI::render() {
 void DebugUI::drawMainPanel() {
     ImGui::SetNextWindowPos({10, 10}, ImGuiCond_Appearing);
     ImGui::SetNextWindowSize({300, 0}, ImGuiCond_Appearing);
+
     if (ImGui::Begin("Game")) {
-        ImGui::Text("Car hits: %d / %d", game_.carHitCount_, game_.carHitsToDie_);
+        // --- GAME OVER DISPLAY ---
+        if (game_.carDestroyed_) {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+            ImGui::SetWindowFontScale(2.0f); // Make text bigger
+            ImGui::Text("GAME OVER!");
+            ImGui::SetWindowFontScale(1.0f); // Reset scale
+            ImGui::PopStyleColor();
+
+            if (game_.worldManager_->allWolvesDead()) {
+                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
+                 ImGui::Text("BUT YOU WON!");
+                 ImGui::PopStyleColor();
+            } else {
+                 ImGui::Text("The Deer Died.");
+            }
+            ImGui::Separator();
+        } else if (game_.worldManager_->allWolvesDead()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
+            ImGui::SetWindowFontScale(2.0f);
+            ImGui::Text("VICTORY!");
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::PopStyleColor();
+            ImGui::Text("All wolves eliminated.");
+            ImGui::Separator();
+        }
+
+        // Show car health based on the new Car-based health system
+        int hp = game_.car_.getHealth();
+        int maxHp = Config::CAR_MAX_HEALTH; // from GameConstants.hpp
+
+        // Color code HP
+        if (hp < maxHp * 0.3) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 50, 50, 255));
+        else if (hp < maxHp * 0.6) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255));
+        else ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(50, 255, 50, 255));
+
+        ImGui::Text("Car HP: %d / %d", hp, maxHp);
+        ImGui::PopStyleColor();
+
         ImGui::Text("Blur: %.2f", game_.blurLevel_);
-        ImGui::Text("Initialized: %s", game_.initialized_ ? "true" : "false");
 
         if (ImGui::Button("Restart (R)")) {
             game_.restartGame();
@@ -84,8 +122,10 @@ void DebugUI::drawMainPanel() {
         ImGui::Separator();
         ImGui::Text("Wolves Status:");
         int i = 0;
-        for (auto& w : game_.worldManager_->getWolves()) {
-            ImGui::Text("Wolf %d: alive=%s hits=%d", i++, w.alive ? "yes" : "no", w.hits);
+
+        for (const auto& w : game_.worldManager_->getWolves()) {
+            ImVec4 color = w.isAlive() ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1);
+            ImGui::TextColored(color, "Wolf %d: %s (Hits: %d)", i++, w.isAlive() ? "Alive" : "Dead", w.getHits());
         }
     }
     ImGui::End();
@@ -93,7 +133,7 @@ void DebugUI::drawMainPanel() {
 
 void DebugUI::drawMinimapPanel() {
     const float mapSize = 200.f;
-    const float minW = -2000.f, maxW = 2000.f;
+    const float minW = -Config::WORLD_BOUNDS, maxW = Config::WORLD_BOUNDS; // Use constants
     const float scale = mapSize / (maxW - minW);
 
     ImGui::SetNextWindowPos({320, 10}, ImGuiCond_Appearing);
@@ -113,9 +153,10 @@ void DebugUI::drawMinimapPanel() {
         ImVec2 tip{ c.x + sin(ang)*12.f, c.y + cos(ang)*12.f };
         dl->AddLine(c, tip, IM_COL32(0,255,255,255), 2.f);
 
-        for (auto& w : game_.worldManager_->getWolves()) {
-            if (!w.alive) continue;
-            auto wp = w.object->position;
+        for (const auto& w : game_.worldManager_->getWolves()) {
+            if (!w.isAlive()) continue;
+
+            auto wp = w.getModel()->position;
             ImVec2 wm = toMap(wp.x, wp.z);
             dl->AddCircleFilled(wm, 4, IM_COL32(255,50,50,255));
         }

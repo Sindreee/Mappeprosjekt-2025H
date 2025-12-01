@@ -33,7 +33,6 @@ private:
     void setupTurret();
     void configureEvents();
     void tick();
-    void handleWolfHit(); // wolf melee damage handler
     void restartGame(); // extracted restart logic for reuse (UI + key)
     void handleOutOfBoundsAndGravity(float dt); // New: handle out-of-bounds punishment & falling physics for the car/deer
 
@@ -72,12 +71,8 @@ private:
     float mushroomSpeedFactor_ = 7.0f; // extra max speed per unit blur
 
     bool initialized_ = true;
+    bool carDestroyed_ = false;    // cached death flag from Car::isDead
 
-    int carHitCount_ = 0;          // wolf melee hits taken
-    float carHitCooldown_ = 0.0f;  // cooldown between registering hits
-    const int carHitsToDie_ = 10;   // hits needed to die
-    bool carDestroyed_ = false;    // car death state
-    
     int difficultyLevel_ = 1;      // Difficulty level (1, 2, or 3) - affects wolf speed
 };
 

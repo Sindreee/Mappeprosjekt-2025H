@@ -36,17 +36,14 @@ public:
 
     void spawnWorld(const WorldConfig& config);
 
-    // Register car and hook a game-level callback for wolf collisions (end game)
     void registerCar(const std::shared_ptr<threepp::Object3D>& car, float radius,
                      std::function<void()> onWolfCollision);
 
-    // Let Game provide behavior when a bear collides with the car (e.g., slow down with cooldown)
     void setBearCollisionHandler(std::function<void()> handler);
-
-    // Let Game provide behavior when mushroom is collected (e.g., play sound, apply blur)
     void setMushroomCollisionHandler(std::function<void()> handler);
 
-    // Called per frame: updates wolves, bears, syncs bullets, processes all collisions
+    void handleBulletWolfCollision(threepp::Object3D* wolfMesh);
+
     void update(float dt, const threepp::Vector3& carPos,
                 const std::vector<std::shared_ptr<class Bullet>>& bullets);
 
@@ -56,14 +53,15 @@ public:
     const std::vector<MovingBear>& getBears() const { return bears_; }
     bool allWolvesDead() const;
 
-    void setDifficultyLevel(int level); // Set difficulty (1-3) for wolf spawn speed
+    void setDifficultyLevel(int level);
 
-    void addSkyAndSun(float elevationDeg =15.0f, float azimuthDeg = 180.0f);
-    void updateSkyPosition(const threepp::Vector3& cameraPos); // new: keep camera inside sky
+    // Reverted to standard manual addition
+    void addSkyAndSun(float elevationDeg = 35.0f, float azimuthDeg = 180.0f);
+
+    void updateSkyPosition(const threepp::Vector3& cameraPos);
     void setSkyYOffset(float yOffset) { skyYOffset_ = yOffset; }
     void createGround(float groundsize);
 
-    // Restart support: remove & respawn dynamic entities (mushrooms, bears, wolves) & reset blur
     void resetDynamicEntities();
 
 private:
@@ -74,12 +72,11 @@ private:
 
     void syncBullets(const std::vector<std::shared_ptr<class Bullet>>& bullets);
 
-    // Removal helpers
     void removeMushrooms();
     void removeBears();
     void removeWolves();
 
-    WorldConfig lastConfig_{}; // store last used config for resets
+    WorldConfig lastConfig_{};
 
 private:
     threepp::Scene& scene_;
@@ -93,11 +90,11 @@ private:
     std::vector<MovingBear> bears_;
 
     std::shared_ptr<threepp::Object3D> car_;
-    std::shared_ptr<threepp::Sky> sky_; // store sky to move with camera
-    std::shared_ptr<threepp::DirectionalLight> sunLight_; // store sunlight for future tweaks
-    std::shared_ptr<threepp::Mesh> ground_; // store ground mesh for shadow receiving
-    float skyYOffset_ = -1300.0f;
+    std::shared_ptr<threepp::Sky> sky_;
+    std::shared_ptr<threepp::DirectionalLight> sunLight_;
 
+    std::shared_ptr<threepp::Mesh> ground_;
+    float skyYOffset_ = -1300.0f;
 
     std::function<void()> onWolfCollision_;
     std::function<void()> onBearCollision_;
@@ -105,7 +102,7 @@ private:
 
     std::unordered_set<const threepp::Object3D*> registeredBullets_;
 
-    int difficultyLevel_ = 1; // Difficulty level (1-3) affects wolf speed
+    int difficultyLevel_ = 1;
 };
 
 #endif // WORLD_MANAGER_HPP
