@@ -61,12 +61,12 @@ void DebugUI::drawMainPanel() {
     ImGui::SetNextWindowSize({300, 0}, ImGuiCond_Appearing);
 
     if (ImGui::Begin("Game")) {
-        // --- GAME OVER DISPLAY ---
+        // Show game-over or victory status messages.
         if (game_.carDestroyed_) {
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-            ImGui::SetWindowFontScale(2.0f); // Make text bigger
+            ImGui::SetWindowFontScale(2.0f);
             ImGui::Text("GAME OVER!");
-            ImGui::SetWindowFontScale(1.0f); // Reset scale
+            ImGui::SetWindowFontScale(1.0f);
             ImGui::PopStyleColor();
 
             if (game_.worldManager_->allWolvesDead()) {
@@ -87,11 +87,10 @@ void DebugUI::drawMainPanel() {
             ImGui::Separator();
         }
 
-        // Show car health based on the new Car-based health system
+        // Car health and blur status indicators.
         int hp = game_.car_.getHealth();
-        int maxHp = Config::CAR_MAX_HEALTH; // from GameConstants.hpp
+        int maxHp = Config::CAR_MAX_HEALTH;
 
-        // Color code HP
         if (hp < maxHp * 0.3) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 50, 50, 255));
         else if (hp < maxHp * 0.6) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255));
         else ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(50, 255, 50, 255));
@@ -113,7 +112,7 @@ void DebugUI::drawMainPanel() {
         ImGui::Separator();
         ImGui::Text("Difficulty Level");
         if (ImGui::SliderInt("Level", &game_.difficultyLevel_, 1, 3)) {
-            // Level changed - show info
+            // Tooltip shows the derived base speed used for wolves at this difficulty.
             float baseSpeed = 50.0f + (game_.difficultyLevel_ - 1) * 40.0f;
             ImGui::SetTooltip("Wolf base speed: %.1f", baseSpeed);
         }
@@ -133,7 +132,7 @@ void DebugUI::drawMainPanel() {
 
 void DebugUI::drawMinimapPanel() {
     const float mapSize = 200.f;
-    const float minW = -Config::WORLD_BOUNDS, maxW = Config::WORLD_BOUNDS; // Use constants
+    const float minW = -Config::WORLD_BOUNDS, maxW = Config::WORLD_BOUNDS;
     const float scale = mapSize / (maxW - minW);
 
     ImGui::SetNextWindowPos({320, 10}, ImGuiCond_Appearing);
@@ -144,15 +143,19 @@ void DebugUI::drawMinimapPanel() {
         auto* dl = ImGui::GetWindowDrawList();
         dl->AddRectFilled(p0, p1, IM_COL32(30,30,50,255));
         dl->AddRect(p0, p1, IM_COL32(200,200,200,255));
+
+        // Helper to transform world XZ coordinates into minimap pixel space.
         auto toMap = [&](float wx, float wz){ return ImVec2(p0.x + (wx - minW) * scale, p0.y + (wz - minW) * scale); };
 
-        auto cpos = game_.car_.getPosition();
+        // Draw the car as a blue circle with a small heading arrow.
+        auto cpos = game_.car_.getGroup()->position;
         ImVec2 c = toMap(cpos.x, cpos.z);
         dl->AddCircleFilled(c, 5, IM_COL32(0,200,255,255));
         float ang = game_.car_.getGroup()->rotation.y;
         ImVec2 tip{ c.x + sin(ang)*12.f, c.y + cos(ang)*12.f };
         dl->AddLine(c, tip, IM_COL32(0,255,255,255), 2.f);
 
+        // Draw living wolves as red dots.
         for (const auto& w : game_.worldManager_->getWolves()) {
             if (!w.isAlive()) continue;
 
@@ -161,7 +164,7 @@ void DebugUI::drawMinimapPanel() {
             dl->AddCircleFilled(wm, 4, IM_COL32(255,50,50,255));
         }
 
-        // Draw trees (sample every 10th to avoid clutter)
+        // Sample every 10th tree so the minimap stays readable.
         int ti = 0;
         for (auto& t : game_.worldManager_->getTrees()) {
             if (++ti % 10) continue;

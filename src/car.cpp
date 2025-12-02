@@ -2,39 +2,44 @@
 #include <threepp/loaders/AssimpLoader.hpp>
 #include <iostream>
 #include <cmath>
-#include <algorithm> // for std::max
+
 
 Car::Car() {
     group_ = std::make_shared<threepp::Group>();
     threepp::AssimpLoader loader;
 
-    deerModel_ = loader.load("../Models/Mesh_Deer.obj");
+    // Load the deer model and use it as the visual root of the car.
+    deerModel_ = loader.load("Models/Mesh_Deer.obj");
     if (deerModel_) {
         deerModel_->scale.set(0.05f, 0.05f, 0.05f);
         group_->add(deerModel_);
     }
 
-    skateboardModel_ = loader.load("../Models/SkateboardBrettOgAkslinger2.obj");
-    if (skateboardModel_) {
-        skateboardModel_->scale.set(0.5f, 0.5f, 0.5f);
-        skateboardModel_->position.set(0, -65.0f, 0);
-        if (deerModel_) deerModel_->add(skateboardModel_);
+    // Load skateboard as a child of the deer model so it moves together with the deer.
+    auto skateboardModel = loader.load("Models/SkateboardBrettOgAkslinger2.obj");
+    if (skateboardModel) {
+        skateboardModel->scale.set(0.5f, 0.5f, 0.5f);
+        skateboardModel->position.set(0, -65.0f, 0);
+        if (deerModel_) deerModel_->add(skateboardModel);
 
+        // Predefined local X/Z offsets for the four wheels.
         std::vector<std::pair<int, std::pair<float, float>>> wheelPos = {
             {0, {70, 70}}, {1, {-70, 70}}, {2, {70, -70}}, {3, {-70, -70}}
         };
 
-        auto wheelMesh = loader.load("../Models/TerrainWheel3.obj");
+        auto wheelMesh = loader.load("Models/TerrainWheel3.obj");
         if (wheelMesh) {
+            // Clone the same wheel mesh into each wheel slot and attach to the skateboard.
             for (auto& wp : wheelPos) {
                 auto wheel = wheelMesh->clone();
                 wheel->position.set(wp.second.first, -8, wp.second.second);
                 wheels_[wp.first] = wheel;
-                skateboardModel_->add(wheel);
+                skateboardModel->add(wheel);
             }
         }
     }
 
+    // Enable shadow casting/receiving on all meshes in the hierarchy.
     group_->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -63,7 +68,6 @@ void Car::applySpeedBoost(float extraSpeed) {
 
 void Car::modifyBaseSpeed(float delta) {
     baseSpeed_ += delta;
-    // Don't let speed drop below 30 (so game remains playable)
     if (baseSpeed_ < 30.0f) baseSpeed_ = 30.0f;
 }
 
@@ -84,20 +88,19 @@ void Car::takeDamage(int amount) {
     }
 }
 
-bool Car::isDead() const {
-    return health_ <= 0;
-}
+bool Car::isDead() const { return health_ <= 0; }
 
 void Car::update(float dt) {
     if (hitCooldownTimer_ > 0.0f) hitCooldownTimer_ -= dt;
-
     updateWheels(dt);
     checkBoundsAndGravity(dt);
 }
 
 void Car::updateWheels(float dt) {
+    // Skip animation when there is almost no movement or steering.
     if (std::abs(currentSpeed_) < 0.1f && std::abs(currentRotation_) < 0.1f) return;
 
+    // Rotate wheels around X proportional to forward speed and add a bit of differential for steering.
     float speedRotation = currentSpeed_ * dt * 0.1f;
     float turnRotation = currentRotation_ * dt * 0.05f;
 
@@ -114,14 +117,17 @@ void Car::checkBoundsAndGravity(float dt) {
     bool outOfBounds = (pos.x < -limit || pos.x > limit || pos.z < -limit || pos.z > limit);
 
     if (outOfBounds) {
+        // When the car leaves the playable area, it starts falling down under gravity.
         isFalling_ = true;
         fallVelocityY_ -= Config::GRAVITY * dt;
         group_->position.y += fallVelocityY_ * dt;
 
+        // Once it falls far enough, the car is considered destroyed.
         if (pos.y < -100.0f) {
             health_ = 0;
         }
     } else {
+        // Inside bounds the car is pinned to the ground plane.
         isFalling_ = false;
         fallVelocityY_ = 0.0f;
         group_->position.y = 0.0f;
@@ -132,7 +138,7 @@ void Car::reset() {
     group_->position.copy(spawnPos_);
     group_->rotation.set(0,0,0);
     health_ = Config::CAR_MAX_HEALTH;
-    baseSpeed_ = Config::CAR_BASE_SPEED; // Reset base speed
+    baseSpeed_ = Config::CAR_BASE_SPEED;
     speedBoost_ = 0.0f;
     currentSpeed_ = 0.0f;
     currentRotation_ = 0.0f;

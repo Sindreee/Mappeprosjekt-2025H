@@ -4,6 +4,7 @@
 #include <threepp/materials/ShaderMaterial.hpp>
 #include <threepp/geometries/PlaneGeometry.hpp>
 #include <threepp/materials/MeshPhongMaterial.hpp>
+#include <threepp/lights/DirectionalLight.hpp>
 #include <algorithm>
 #include <cmath>
 
@@ -26,13 +27,12 @@ void WorldManager::spawnWorld(const WorldConfig& config) {
 void WorldManager::update(float dt, const Vector3& carPos, const std::vector<std::shared_ptr<Bullet>>& bullets) {
     for (auto& wolf : wolves_) wolf.update(dt, carPos);
     for (auto& bear : bears_) bear.update(dt);
-
     syncBullets(bullets);
     collisionDetection_.processAllPairs();
 }
 
 void WorldManager::spawnTrees(const WorldConfig& config) {
-    auto model = loader_.load("../Models/model.obj");
+    auto model = loader_.load("Models/model.obj");
     if (!model) return;
 
     trees_.reserve(config.treeCount);
@@ -45,7 +45,7 @@ void WorldManager::spawnTrees(const WorldConfig& config) {
 
         clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
 
-        auto tree = std::make_shared<GameObject>(clone, config.treeCollisionRadius, GameObjectType::TREE);
+        auto tree = std::make_shared<GameObject>(clone);
         scene_.add(tree->getModel());
         trees_.push_back(tree);
 
@@ -53,27 +53,34 @@ void WorldManager::spawnTrees(const WorldConfig& config) {
     }
 }
 
+
 void WorldManager::spawnBears(const WorldConfig& config) {
-    bears_ = createBears(scene_, config.bearCount, "../Models/Mesh_Bear.obj", config.bearScale);
+    bears_ = createBears(scene_, config.bearCount, "Models/Mesh_Bear.obj", config.bearScale);
     for (auto& b : bears_) {
+
         collisionDetection_.addCollider(b.getModel(), config.bearCollisionRadius, ColliderType::BEAR,
             [this](const Collider&, const Collider& other){
-                if (other.type == ColliderType::CAR && onBearCollision_) {
-                    onBearCollision_();
-                }
+                this->handleBearLogic(other);
             });
     }
 }
 
+void WorldManager::handleBearLogic(const Collider& otherCollider) {
+    if (otherCollider.type == ColliderType::CAR && onBearCollision_) {
+        onBearCollision_();
+    }
+}
+
 void WorldManager::spawnWolvesDefault() {
-    wolves_ = createWolves(scene_, Config::WOLF_COUNT_BASE, "../Models/wolf/model.obj", (float)difficultyLevel_);
+    wolves_ = createWolves(scene_, Config::WOLF_COUNT_BASE, "Models/wolf/model.obj", (float)difficultyLevel_);
     for (auto& w : wolves_) {
         collisionDetection_.addCollider(w.getModel(), 2.0f, ColliderType::WOLF);
     }
 }
 
+
 void WorldManager::spawnMushrooms(const WorldConfig& config) {
-    auto model = loader_.load("../Models/mushrooms/model.obj");
+    auto model = loader_.load("Models/mushrooms/model.obj");
     if (!model) return;
 
     mushrooms_.reserve(config.mushroomCount);
@@ -85,28 +92,38 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
 
         clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
 
-        auto gameObj = std::make_shared<GameObject>(clone, config.mushroomCollisionRadius, GameObjectType::MUSHROOM);
+        auto gameObj = std::make_shared<GameObject>(clone);
+
         gameObj->setOnCollision([this](GameObject&) {
             blurLevel_ = std::min(blurLevel_ + 3.0f, Config::MAX_BLUR);
         });
 
+
         collisionDetection_.addCollider(clone, config.mushroomCollisionRadius, ColliderType::MUSHROOM,
             [this](const Collider& self, const Collider& other){
-                if (other.type == ColliderType::CAR) {
-                    for (auto it = mushrooms_.begin(); it != mushrooms_.end(); ++it) {
-                        if ((*it)->getModel().get() == self.object.get()) {
-                            (*it)->handleCollision();
-                            (*it)->removeFromScene(scene_);
-                            mushrooms_.erase(it);
-                            if (onMushroomCollision_) onMushroomCollision_();
-                            break;
-                        }
-                    }
-                }
+                this->handleMushroomLogic(self, other);
             });
 
         scene_.add(gameObj->getModel());
         mushrooms_.push_back(gameObj);
+    }
+}
+
+
+void WorldManager::handleMushroomLogic(const Collider& mushroomCollider, const Collider& otherCollider) {
+    if (otherCollider.type != ColliderType::CAR) return;
+
+
+    for (auto it = mushrooms_.begin(); it != mushrooms_.end(); ++it) {
+
+        if ((*it)->getModel().get() == mushroomCollider.object.get()) {
+
+            (*it)->handleCollision();      // Trigger the blur effect
+            (*it)->removeFromScene(scene_); // remove graphics
+            mushrooms_.erase(it);           // erase from list
+            if (onMushroomCollision_) onMushroomCollision_();
+            break;
+        }
     }
 }
 
@@ -157,20 +174,20 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
         Vector3 sunPos(std::cos(elev) * std::sin(azim), std::sin(elev), std::cos(elev) * std::cos(azim));
         shaderMat->uniforms["sunPosition"] = Uniform(sunPos);
 
-        sunLight_ = DirectionalLight::create(Color::lightyellow, 1.7f);
-        sunLight_->position.copy(sunPos.clone().normalize().multiplyScalar(5000.0f));
-        sunLight_->castShadow = true;
+        auto sunLight = DirectionalLight::create(Color::lightyellow, 1.7f);
+        sunLight->position.copy(sunPos.clone().normalize().multiplyScalar(5000.0f));
+        sunLight->castShadow = true;
 
-        sunLight_->shadow->mapSize.set(4096, 4096);
-        sunLight_->shadow->bias = -0.0001f;
+        sunLight->shadow->mapSize.set(4096, 4096);
+        sunLight->shadow->bias = -0.0001f;
 
         float viewSize = 2500.0f;
-        sunLight_->shadow->camera = std::make_unique<OrthographicCamera>(
+        sunLight->shadow->camera = std::make_unique<OrthographicCamera>(
             -viewSize, viewSize, viewSize, -viewSize, 0.5f, 10000.0f
         );
-        sunLight_->shadow->camera->updateProjectionMatrix();
+        sunLight->shadow->camera->updateProjectionMatrix();
 
-        scene_.add(sunLight_);
+        scene_.add(sunLight);
     }
     scene_.add(sky_);
 }
@@ -216,19 +233,21 @@ void WorldManager::removeWolves() {
 
 const std::vector<Wolf>& WorldManager::getWolves() const { return wolves_; }
 const std::vector<std::shared_ptr<GameObject>>& WorldManager::getTrees() const { return trees_; }
+
 bool WorldManager::allWolvesDead() const {
     for(const auto& w : wolves_) if(w.isAlive()) return false;
     return true;
 }
-void WorldManager::setDifficultyLevel(int level) { difficultyLevel_ = std::clamp(level, 1, 3); }
+void WorldManager::setDifficultyLevel(int level) {
+    difficultyLevel_ = std::clamp(level, 1, 3);
+}
 
 void WorldManager::registerCar(const std::shared_ptr<threepp::Object3D>& car, float radius, std::function<void()> onWolfCollision) {
-    car_ = car;
-    onWolfCollision_ = std::move(onWolfCollision);
-    collisionDetection_.addCollider(car_, radius, ColliderType::CAR,
-        [this](const Collider&, const Collider& other){
-            if (other.type == ColliderType::WOLF && onWolfCollision_) onWolfCollision_();
+    collisionDetection_.addCollider(car, radius, ColliderType::CAR,
+        [onWolfCollision](const Collider&, const Collider& other){
+            if (other.type == ColliderType::WOLF && onWolfCollision) onWolfCollision();
         });
 }
+
 void WorldManager::setBearCollisionHandler(std::function<void()> handler) { onBearCollision_ = std::move(handler); }
 void WorldManager::setMushroomCollisionHandler(std::function<void()> handler) { onMushroomCollision_ = std::move(handler); }

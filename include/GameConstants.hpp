@@ -1,33 +1,28 @@
-//
-// Created by sindr on 11/30/2025.
-//
+#ifndef GAMECONSTANTS_HPP
+#define GAMECONSTANTS_HPP
 
-#ifndef MAPPEOPPGAVE_GAMECONSTANTS_HPP
-#define MAPPEOPPGAVE_GAMECONSTANTS_HPP
-
-
+// Global tuning parameters and gameplay constants used across the game.
 namespace Config {
-    // World Settings
-    constexpr float WORLD_SIZE = 3000.0f;
-    constexpr float WORLD_BOUNDS = 1500.0f; // +/- denne verdien
-    constexpr float GRAVITY = 9.81f;
+    // Size and physics of the world
+    constexpr float WORLD_SIZE = 2000.0f;      // Size of the ground plane in world units
+    constexpr float WORLD_BOUNDS = 1000.0f;    // Soft limit before the car starts to fall
+    constexpr float GRAVITY = 9.81f;           // Downward acceleration when falling
 
-    // Car Settings
-    constexpr float CAR_BASE_SPEED = 150.0f;
-    constexpr int CAR_MAX_HEALTH = 10;
-    constexpr float CAR_COLLISION_RADIUS = 7.0f;
-    constexpr float CAR_HIT_COOLDOWN = 0.5f;
+    // Car configuration
+    constexpr float CAR_BASE_SPEED = 150.0f;   // Default max forward speed before any boosts
+    constexpr int CAR_MAX_HEALTH = 10;         // Number of hits the car can take
+    constexpr float CAR_COLLISION_RADIUS = 7.0f; // Radius used when registering the car collider
+    constexpr float CAR_HIT_COOLDOWN = 0.5f;   // Minimum time between two damage hits
 
-    // Entity Counts
-    constexpr int TREE_COUNT = 1000;
-    constexpr int MUSHROOM_COUNT = 300;
-    constexpr int BEAR_COUNT = 400;
-    constexpr int WOLF_COUNT_BASE = 13; // Level 1
+    // World population counts
+    constexpr int TREE_COUNT = 150;           // Number of decorative trees
+    constexpr int MUSHROOM_COUNT = 50;        // Number of collectible mushrooms
+    constexpr int BEAR_COUNT = 70;            // Number of roaming bears
+    constexpr int WOLF_COUNT_BASE = 12;        // Base number of wolves (scaled by difficulty)
 
-    // Gameplay
-    constexpr float MUSHROOM_SPEED_BOOST = 7.0f; // Fart per blur level
-    constexpr float MAX_BLUR = 12.0f;
+    // Gameplay effects
+    constexpr float MUSHROOM_SPEED_BOOST = 7.0f; // Extra car speed per blur level step from mushrooms
+    constexpr float MAX_BLUR = 12.0f;            // Upper bound for blur intensity
 }
 
-
-#endif //MAPPEOPPGAVE_GAMECONSTANTS_HPP
+#endif // GAMECONSTANTS_HPP

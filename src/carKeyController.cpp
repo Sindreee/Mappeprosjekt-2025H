@@ -24,20 +24,25 @@ void KeyController::onKeyReleased(KeyEvent evt) {
 }
 
 void KeyController::update(float dt) {
+    // Integrate forward/backward input into a 1D velocity along the car's local forward axis.
     if (keyState_.up) velocity_ -= acceleration_ * dt;
     if (keyState_.down) velocity_ += acceleration_ * dt;
 
+    // Clamp velocity to current speed limits.
     if (velocity_ > maxSpeed_) velocity_ = maxSpeed_;
     if (velocity_ < -maxSpeed_) velocity_ = -maxSpeed_;
 
+    // Apply simple friction when no acceleration keys are held.
     if (!keyState_.up && !keyState_.down) {
         velocity_ *= friction_;
         if (std::abs(velocity_) < 0.1f) velocity_ = 0.0f;
     }
 
+    // Apply yaw rotation from left/right input.
     if (keyState_.right) object_->rotation.y -= turnSpeed_ * dt;
     if (keyState_.left) object_->rotation.y += turnSpeed_ * dt;
 
+    // Move the object along its facing direction in the XZ-plane.
     float dirX = -std::sin(object_->rotation.y);
     float dirZ = -std::cos(object_->rotation.y);
 
@@ -45,10 +50,11 @@ void KeyController::update(float dt) {
     newPos.x += dirX * velocity_ * dt;
     newPos.z += dirZ * velocity_ * dt;
 
-    // Endring her: Send med object_ som vi skal ignorere (oss selv)
+    // Query the collision system, ignoring the car itself, to see if the new position is blocked.
     if (!collisionDetection_->isBlocked(newPos, 5.0f, object_)) {
         object_->position = newPos;
     } else {
+        // On collision, bounce back slightly and lose some speed.
         velocity_ = -velocity_ * 0.5f;
     }
 }

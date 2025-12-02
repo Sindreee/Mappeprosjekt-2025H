@@ -17,17 +17,32 @@
 #include "BlurOverlay.hpp"
 #include "DebugUI.hpp"
 
+// Top-level game controller.
+// Owns the rendering canvas, scene, camera, and all major subsystems
+// (world manager, player car, input, turret, blur overlay and debug UI).
 class Game {
 public:
     Game();
+
+    // Enter the main animation loop; returns when the window is closed.
     int run();
 
 private:
     friend class DebugUI;
+
+    // Build the initial scene graph and connect world, car, collision and UI.
     void initializeScene();
+
+    // Configure and attach the turret to the car model.
     void setupTurret();
+
+    // Install window and keyboard event handlers.
     void configureEvents();
+
+    // Per-frame update function called from the canvas animation loop.
     void tick();
+
+    // Reset game state and respawn dynamic entities.
     void restartGame();
 
     threepp::Canvas canvas_;
@@ -46,14 +61,14 @@ private:
     std::unique_ptr<BlurOverlay> blurOverlay_;
     std::unique_ptr<DebugUI> debugUI_;
 
-    float bearCollisionCooldown_ = 0.0f;
+    float bearCollisionCooldown_ = 0.0f; // Delay between bear hits affecting the car speed
     threepp::AssimpLoader loader_;
     threepp::Clock clock_;
 
-    float blurLevel_ = 0.0f;
-    bool initialized_ = true;
+    float blurLevel_ = 0.0f;   // Logical blur level, driven by mushrooms and decayed over time
+    bool initialized_ = true;  // When false, tick() stops updating (e.g. after victory)
     bool carDestroyed_ = false;
-    int difficultyLevel_ = 1;
+    int difficultyLevel_ = 1;  // 1 = easy, 3 = hard; affects wolf stats
 };
 
 #endif

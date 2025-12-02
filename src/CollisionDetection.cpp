@@ -2,9 +2,6 @@
 #include <cmath>
 #include <algorithm>
 
-CollisionDetection::CollisionDetection(float collisionRadius)
-    : collisionRadius_(collisionRadius) {}
-
 int CollisionDetection::addCollider(std::shared_ptr<threepp::Object3D> object,
                                     float radius,
                                     ColliderType type,
@@ -13,14 +10,13 @@ int CollisionDetection::addCollider(std::shared_ptr<threepp::Object3D> object,
     return static_cast<int>(colliders_.size() - 1);
 }
 
-// Endring her: Implementer ignore-logikken
 bool CollisionDetection::isBlocked(const threepp::Vector3& position, float checkRadius, const threepp::Object3D* ignoreObject) const {
+    // Test the given position against all solid colliders and see if any would overlap.
     for (const auto& col : colliders_) {
-        // Hvis collideren ikke er aktiv, er sopp/kule, ELLER er objektet selv -> Hopp over
         if (!col.active ||
-            col.type == ColliderType::MUSHROOM ||
+            col.type == ColliderType::MUSHROOM ||   // mushrooms and bullets do not block movement
             col.type == ColliderType::BULLET ||
-            col.object.get() == ignoreObject) { // <-- VIKTIG LINJE
+            col.object.get() == ignoreObject) {     // skip the object itself when querying
             continue;
         }
         
@@ -49,6 +45,8 @@ void CollisionDetection::cleanupInactive() {
 }
 
 void CollisionDetection::processTypePair(ColliderType a, ColliderType b) {
+    // Test all active colliders of type A against all active colliders of type B.
+    // For each overlap we invoke both collider callbacks (if provided).
     for (size_t i = 0; i < colliders_.size(); ++i) {
         if (!colliders_[i].active || colliders_[i].type != a) continue;
         
@@ -72,6 +70,7 @@ void CollisionDetection::processTypePair(ColliderType a, ColliderType b) {
 }
 
 void CollisionDetection::processAllPairs() {
+    // Only check the type combinations that are relevant for gameplay.
     processTypePair(ColliderType::CAR, ColliderType::BEAR);
     processTypePair(ColliderType::CAR, ColliderType::WOLF);
     processTypePair(ColliderType::CAR, ColliderType::MUSHROOM);

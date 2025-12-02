@@ -1,0 +1,40 @@
+# --- CLion & IntelliJ Prosjektfiler ---
+.idea/
+cmake-build-*/
+*.user
+
+# --- C++ Kompilerte filer & Binærer ---
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# --- CMake genererte filer (hvis du kjører cmake manuelt) ---
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+_deps/
+
+# --- VS Code (hvis noen i teamet bruker det) ---
+.vscode/
+
+# --- Systemfiler (Mac/Windows) ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Test output ---
+test_results.txt

@@ -1,7 +1,3 @@
-//
-// Created by sindr on 11/10/2025.
-//
-
 #ifndef MAPPEOPPGAVE_TURRET_H
 #define MAPPEOPPGAVE_TURRET_H
 
@@ -11,21 +7,33 @@
 #include <string>
 #include <vector>
 
+// Player-controlled turret mounted on the car.
+// Rotates left/right from keyboard input and periodically fires Bullet instances.
 class Turret : public threepp::KeyListener {
 public:
     explicit Turret(const std::string& modelPath, float turnspeedRad = 1.5f);
 
+    // Attach the turret model to a parent object at the given local offset.
     void attachTo(threepp::Object3D& parent, const threepp::Vector3& localOffset);
+
     void setRotation(float x, float y, float z);
     void setPosition(float x, float y, float z);
     void setScale(float x, float y, float z);
+
+    // Update turret rotation and internal shoot cooldown timer.
     void update(float dt);
+
+    // Change minimum time between two shots.
     void setShootDelay(float seconds){shootDelay_ = seconds;};
+
     std::shared_ptr<threepp::Object3D> object() const;
+
     void onKeyPressed(threepp::KeyEvent evt) override;
     void onKeyReleased(threepp::KeyEvent evt) override;
 
     const std::vector<std::shared_ptr<Bullet>>& getBullets() const;
+
+    // Advance all active bullets and add them to the scene on first use.
     void updateBullets(float dt, threepp::Scene& scene);
 
 private:

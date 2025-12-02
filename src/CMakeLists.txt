@@ -1,3 +1,6 @@
+# src/CMakeLists.txt
+
+# Lag bibliotek av din kode
 add_library(MappeoppgaveLib
         car.cpp
         carKeyController.cpp
@@ -12,21 +15,17 @@ add_library(MappeoppgaveLib
         WorldManager.cpp
         Wolf.cpp
         DebugUI.cpp
-        ${imgui_SOURCE_DIR}/imgui.cpp
-        ${imgui_SOURCE_DIR}/imgui_draw.cpp
-        ${imgui_SOURCE_DIR}/imgui_tables.cpp
-        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-# Add GLFW include directory from threepp's bundled GLFW
+# Hvor skal den finne header-filer?
 target_include_directories(MappeoppgaveLib PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-    ${threepp_SOURCE_DIR}/src/external/glfw/include
+        ${CMAKE_SOURCE_DIR}/include
 )
 
-target_link_libraries(MappeoppgaveLib PUBLIC threepp assimp)
-
+# Hvem er dette biblioteket avhengig av?
+# Her linker vi bare til "ImGuiLib" som vi lagde i rot-filen! Mye ryddigere.
+target_link_libraries(MappeoppgaveLib PUBLIC
+        threepp
+        assimp
+        ImGuiLib
+)
