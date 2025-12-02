@@ -15,7 +15,7 @@ public:
                const threepp::Vector3& startPos,
                const threepp::Vector3& direction,
                float rotation,
-               float speed = 50.0f,
+               float speed = 90.0f,
                float lifetime = 5.0f);
 
     void update(float dt);

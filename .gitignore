@@ -1,0 +1,3 @@
+# --- CLion & IntelliJ Prosjektfiler ---
+.idea/
+cmake-build-*/

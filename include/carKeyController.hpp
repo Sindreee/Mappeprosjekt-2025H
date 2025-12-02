@@ -16,6 +16,12 @@ public:
 
     float getSpeed() const;
     float getRotation() const;
+
+    // Added: control top speed at runtime
+    void setMaxSpeed(float maxSpeed);
+    void adjustMaxSpeed(float delta); // positive to increase, negative to decrease
+    float getMaxSpeed() const;
+
 private:
     threepp::Object3D* object_;
     CollisionDetection* collisionDetection_;

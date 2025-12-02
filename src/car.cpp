@@ -1,96 +1,148 @@
-//
-// Created by sindr on 10/16/2025.
-//
-
-
+#include "car.hpp"
 #include <threepp/loaders/AssimpLoader.hpp>
-#include <threepp/threepp.hpp>
-#include <car.hpp>
 #include <iostream>
+#include <cmath>
 
 
 Car::Car() {
     group_ = std::make_shared<threepp::Group>();
-
     threepp::AssimpLoader loader;
 
-    deerModel_ = loader.load("../Models/Mesh_Deer.obj");
+    // Load the deer model and use it as the visual root of the car.
+    deerModel_ = loader.load("Models/Mesh_Deer.obj");
     if (deerModel_) {
-        deerModel_->position.set(0, 0, 0);
         deerModel_->scale.set(0.05f, 0.05f, 0.05f);
         group_->add(deerModel_);
     }
 
-        skateboardModel_ = loader.load("../Models/SkateboardBrettOgAkslinger2.obj");
-        if (skateboardModel_) {
-            skateboardModel_->scale.set(0.5f, 0.5f, 0.5f);
-            skateboardModel_->position.set(0, -65.0f, 0);
-            deerModel_->add(skateboardModel_);
+    // Load skateboard as a child of the deer model so it moves together with the deer.
+    auto skateboardModel = loader.load("Models/SkateboardBrettOgAkslinger2.obj");
+    if (skateboardModel) {
+        skateboardModel->scale.set(0.5f, 0.5f, 0.5f);
+        skateboardModel->position.set(0, -65.0f, 0);
+        if (deerModel_) deerModel_->add(skateboardModel);
 
-            auto frontLeftWheel = loader.load("../Models/TerrainWheel3.obj");
-            if (frontLeftWheel) {
-                frontLeftWheel->position.set(70, -8, 70);
-                wheels_[0] = frontLeftWheel;
-                skateboardModel_->add(wheels_[0]);
-            } else {
-                std::cerr << "Failed to load front left wheel" << std::endl;
-            }
+        // Predefined local X/Z offsets for the four wheels.
+        std::vector<std::pair<int, std::pair<float, float>>> wheelPos = {
+            {0, {70, 70}}, {1, {-70, 70}}, {2, {70, -70}}, {3, {-70, -70}}
+        };
 
-            auto frontRightWheel = loader.load("../Models/TerrainWheel3.obj");
-            if (frontRightWheel) {
-                frontRightWheel->position.set(-70, -8, 70);
-                wheels_[1] = frontRightWheel;
-                skateboardModel_->add(wheels_[1]);
-            }
-
-            auto backLeftWheel = loader.load("../Models/TerrainWheel3.obj");
-            if (backLeftWheel) {
-                backLeftWheel->position.set(70, -8, -70);
-                wheels_[2] = backLeftWheel;
-                skateboardModel_->add(wheels_[2]);
-            }
-
-            auto backRightWheel = loader.load("../Models/TerrainWheel3.obj");
-            if (backRightWheel) {
-                backRightWheel->position.set(-70, -8, -70);
-                wheels_[3] = backRightWheel;
-                skateboardModel_->add(wheels_[3]);
+        auto wheelMesh = loader.load("Models/TerrainWheel3.obj");
+        if (wheelMesh) {
+            // Clone the same wheel mesh into each wheel slot and attach to the skateboard.
+            for (auto& wp : wheelPos) {
+                auto wheel = wheelMesh->clone();
+                wheel->position.set(wp.second.first, -8, wp.second.second);
+                wheels_[wp.first] = wheel;
+                skateboardModel->add(wheel);
             }
         }
+    }
+
+    // Enable shadow casting/receiving on all meshes in the hierarchy.
+    group_->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+    });
 }
 
-
 void Car::setSpeed(float speed) {
-    speed_ = speed;
+    if (isDead()) {
+        currentSpeed_ = 0.0f;
+        return;
+    }
+    if (!isFalling_) {
+        currentSpeed_ = speed;
+    }
 }
 
 void Car::setRotation(float rotation) {
-    rotation_ = rotation;
+    if (!isFalling_ && !isDead()) {
+        currentRotation_ = rotation;
+    }
 }
 
-void Car::update(float deltaTime) {
-    // Calculate base wheel rotation from forward/backward speed
-    float speedRotation = speed_ * deltaTime * 0.1f;
-
-    // Calculate rotation from turning (tank-like controls)
-    float turnRotation = rotation_ * deltaTime * 0.05f;
-
-    // Left wheels: forward speed minus turn (turning subtracts from left)
-    float leftWheelDelta = speedRotation - turnRotation;
-
-    // Right wheels: forward speed plus turn (turning adds to right)
-    float rightWheelDelta = speedRotation + turnRotation;
-
-    // Update cumulative rotation
-    wheelRotation_ += speedRotation;
-
-    // Apply to wheels
-    if (wheels_[0]) wheels_[0]->rotation.x += leftWheelDelta;   // Front left
-    if (wheels_[2]) wheels_[2]->rotation.x += leftWheelDelta;   // Back left
-    if (wheels_[1]) wheels_[1]->rotation.x += rightWheelDelta;  // Front right
-    if (wheels_[3]) wheels_[3]->rotation.x += rightWheelDelta;  // Back right
+void Car::applySpeedBoost(float extraSpeed) {
+    speedBoost_ = extraSpeed;
 }
 
-std::shared_ptr<threepp::Group> Car::getGroup() {
-    return group_;
+void Car::modifyBaseSpeed(float delta) {
+    baseSpeed_ += delta;
+    if (baseSpeed_ < 30.0f) baseSpeed_ = 30.0f;
+}
+
+float Car::getMaxSpeed() const {
+    return baseSpeed_ + speedBoost_;
+}
+
+void Car::takeDamage(int amount) {
+    if (hitCooldownTimer_ > 0.0f || isDead()) return;
+
+    health_ -= amount;
+    hitCooldownTimer_ = Config::CAR_HIT_COOLDOWN;
+    std::cout << "Car hit! Health: " << health_ << "/" << Config::CAR_MAX_HEALTH << std::endl;
+
+    if (isDead()) {
+        std::cout << "Car died from damage!" << std::endl;
+        currentSpeed_ = 0.0f;
+    }
+}
+
+bool Car::isDead() const { return health_ <= 0; }
+
+void Car::update(float dt) {
+    if (hitCooldownTimer_ > 0.0f) hitCooldownTimer_ -= dt;
+    updateWheels(dt);
+    checkBoundsAndGravity(dt);
+}
+
+void Car::updateWheels(float dt) {
+    // Skip animation when there is almost no movement or steering.
+    if (std::abs(currentSpeed_) < 0.1f && std::abs(currentRotation_) < 0.1f) return;
+
+    // Rotate wheels around X proportional to forward speed and add a bit of differential for steering.
+    float speedRotation = currentSpeed_ * dt * 0.1f;
+    float turnRotation = currentRotation_ * dt * 0.05f;
+
+    if (wheels_[0]) wheels_[0]->rotation.x -= (speedRotation - turnRotation);
+    if (wheels_[2]) wheels_[2]->rotation.x -= (speedRotation - turnRotation);
+    if (wheels_[1]) wheels_[1]->rotation.x -= (speedRotation + turnRotation);
+    if (wheels_[3]) wheels_[3]->rotation.x -= (speedRotation + turnRotation);
+}
+
+void Car::checkBoundsAndGravity(float dt) {
+    auto pos = group_->position;
+    float limit = Config::WORLD_BOUNDS;
+
+    bool outOfBounds = (pos.x < -limit || pos.x > limit || pos.z < -limit || pos.z > limit);
+
+    if (outOfBounds) {
+        // When the car leaves the playable area, it starts falling down under gravity.
+        isFalling_ = true;
+        fallVelocityY_ -= Config::GRAVITY * dt;
+        group_->position.y += fallVelocityY_ * dt;
+
+        // Once it falls far enough, the car is considered destroyed.
+        if (pos.y < -100.0f) {
+            health_ = 0;
+        }
+    } else {
+        // Inside bounds the car is pinned to the ground plane.
+        isFalling_ = false;
+        fallVelocityY_ = 0.0f;
+        group_->position.y = 0.0f;
+    }
+}
+
+void Car::reset() {
+    group_->position.copy(spawnPos_);
+    group_->rotation.set(0,0,0);
+    health_ = Config::CAR_MAX_HEALTH;
+    baseSpeed_ = Config::CAR_BASE_SPEED;
+    speedBoost_ = 0.0f;
+    currentSpeed_ = 0.0f;
+    currentRotation_ = 0.0f;
+    fallVelocityY_ = 0.0f;
+    isFalling_ = false;
+    hitCooldownTimer_ = 0.0f;
 }

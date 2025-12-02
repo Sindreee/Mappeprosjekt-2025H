@@ -1,7 +1,3 @@
-//
-// Created by sindr on 11/17/2025.
-//
-
 #ifndef GAMEOBJECT_HPP
 #define GAMEOBJECT_HPP
 
@@ -10,43 +6,27 @@
 #include <memory>
 #include <string>
 
-enum class GameObjectType {
-    TREE,      // Blocks movement
-    MUSHROOM,  // Causes blur effect
-    NEUTRAL    // No special behavior
-};
-
+// Thin wrapper around a Threepp Object3D that can participate in collisions
+// via a callback, and can be easily removed from the scene.
 class GameObject {
 public:
     using CollisionCallback = std::function<void(GameObject&)>;
 
-    GameObject(const std::string& modelPath,
-               const threepp::Vector3& position,
-               const threepp::Vector3& scale,
-               float collisionRadius,
-               GameObjectType type = GameObjectType::NEUTRAL);
+    GameObject(std::shared_ptr<threepp::Object3D> mesh);
 
-    GameObject(std::shared_ptr<threepp::Object3D> mesh,
-           float collisionRadius,
-           GameObjectType type);
-
+    // Register a callback that is invoked when the collision system reports a hit.
     void setOnCollision(CollisionCallback callback);
-    bool checkCollision(const threepp::Vector3& position) const;
+
+    // Invoke the registered collision callback, if any.
     void handleCollision();
+
+    // Remove this object's model from the given scene, if it is currently attached.
     void removeFromScene(threepp::Scene& scene);
 
     std::shared_ptr<threepp::Object3D> getModel() const { return model_; }
-    const threepp::Vector3& getPosition() const { return model_->position; }
-    float getCollisionRadius() const { return collisionRadius_; }
-    bool isActive() const { return active_; }
-    void setActive(bool active) { active_ = active; }
-    GameObjectType getType() const { return type_; }
 
 private:
     std::shared_ptr<threepp::Object3D> model_;
-    float collisionRadius_;
-    bool active_ = true;
-    GameObjectType type_;
     CollisionCallback onCollision_;
 };
 

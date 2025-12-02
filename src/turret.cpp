@@ -1,12 +1,7 @@
 //
-// Created by sindr on 11/10/2025.
+// Turret class implementation
+// Responsible for managing turret model, rotation, shooting bullets, and updating in the scene
 //
-
-#include "turret.hpp"
-#include <threepp/loaders/AssimpLoader.hpp>
-#include <stdexcept>
-
-using namespace threepp;
 
 #include "turret.hpp"
 #include <threepp/loaders/AssimpLoader.hpp>
@@ -22,6 +17,12 @@ Turret::Turret(const std::string& modelPath, float turnSpeedRad)
     if (!model_) {
         throw std::runtime_error("Failed to load turret model: " + modelPath);
     }
+
+    // Enable shadows on all meshes that make up the turret.
+    model_->traverseType<Mesh>([](Mesh& mesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+    });
 }
 
 void Turret::attachTo(Object3D& parent, const Vector3& localOffset) {
@@ -48,10 +49,8 @@ void Turret::shoot() {
     Vector3 worldPos;
     model_->getWorldPosition(worldPos);
 
-    // Get turret's world rotation
+    // Combine turret's own yaw with the parent's yaw (e.g. the car) to get a world rotation.
     float worldRotation = model_->rotation.y;
-
-    // Get parent rotation if attached to car
     if (model_->parent) {
         worldRotation += model_->parent->rotation.y;
     }
@@ -60,7 +59,7 @@ void Turret::shoot() {
     float downwardAngle = -0.015f;
     float heightOffset = 3.0f;
 
-    // Fix: Use negative sin for forward direction
+    // Forward direction for the bullet in world space (slightly pitched downward).
     Vector3 direction(
         -std::sin(worldRotation) * std::cos(downwardAngle),
         std::sin(downwardAngle),
@@ -79,6 +78,7 @@ void Turret::shoot() {
         150.0f);
     bullets_.push_back(bullet);
 }
+
 void Turret::update(float dt) {
     if (!model_) return;
 
@@ -103,6 +103,7 @@ void Turret::updateBullets(float dt, Scene& scene) {
             scene.remove(*(*it)->getModel());
             it = bullets_.erase(it);
         } else {
+            // Lazily add bullets to the scene the first time they are updated.
             if ((*it)->getModel()->parent == nullptr) {
                 scene.add((*it)->getModel());
             }
