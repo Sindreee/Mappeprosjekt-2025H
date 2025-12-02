@@ -61,11 +61,16 @@ add_subdirectory(src)
 
 
 add_executable(Mappeoppgave main.cpp)
+
 # Link the library thats made in src/ (MappeoppgaveLib)
 target_link_libraries(Mappeoppgave PRIVATE MappeoppgaveLib)
 
 # Build tests
-add_executable(Tests test.cpp)
+add_executable(Tests
+        test_core.cpp
+        test_collision.cpp
+        test_entities.cpp
+)
 
 
 target_link_libraries(Tests PRIVATE MappeoppgaveLib Catch2::Catch2WithMain)
