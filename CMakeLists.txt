@@ -84,5 +84,5 @@ add_custom_command(TARGET Mappeoppgave POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/Models
         $<TARGET_FILE_DIR:Mappeoppgave>/Models
-        COMMENT "Kopierer Models-mappen til output-mappen..."
+        COMMENT "Copies the models-folder the output-folder..."
 )
