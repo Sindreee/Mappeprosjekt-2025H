@@ -109,4 +109,7 @@ Bear by Poly by Google [CC-BY] via Poly Pizza
 
 Wolf by Lee Mason [CC-BY] via Poly Pizza
 
+Youbot Keycontroller,
+https://github.com/markaren/threepp/blob/master/examples/projects/Youbot/KeyController.hpp
+
 Deepwiki for threepp imgui and catch2 https://deepwiki.com/markaren/threepp
