@@ -13,6 +13,8 @@
 
 using namespace threepp;
 
+// DebugUI was initally an AI driven experiment but due to time constraints it has been adapted as is
+// without much changes only reconfiguring some parameters and ,changed to fit the program
 DebugUI::DebugUI(Game& game, GLFWwindow* window): game_(game), window_(window) {
     if (!window) return;
     initBackend();
@@ -87,7 +89,7 @@ void DebugUI::drawMainPanel() {
             ImGui::Separator();
         }
 
-        // Car health and blur status indicators.
+        // ---Car health and blur status indicators.
         int hp = game_.car_.getHealth();
         int maxHp = Config::CAR_MAX_HEALTH;
 
@@ -144,10 +146,10 @@ void DebugUI::drawMinimapPanel() {
         dl->AddRectFilled(p0, p1, IM_COL32(30,30,50,255));
         dl->AddRect(p0, p1, IM_COL32(200,200,200,255));
 
-        // Helper to transform world XZ coordinates into minimap pixel space.
+        // 1. ---Helper to transform world XZ coordinates into minimap pixel space.
         auto toMap = [&](float wx, float wz){ return ImVec2(p0.x + (wx - minW) * scale, p0.y + (wz - minW) * scale); };
 
-        // Draw the car as a blue circle with a small heading arrow.
+        // 2. ---Draw the car as a blue circle with a small heading arrow.
         auto cpos = game_.car_.getGroup()->position;
         ImVec2 c = toMap(cpos.x, cpos.z);
         dl->AddCircleFilled(c, 5, IM_COL32(0,200,255,255));
@@ -155,7 +157,7 @@ void DebugUI::drawMinimapPanel() {
         ImVec2 tip{ c.x + sin(ang)*12.f, c.y + cos(ang)*12.f };
         dl->AddLine(c, tip, IM_COL32(0,255,255,255), 2.f);
 
-        // Draw living wolves as red dots.
+        // 3. ---Draw living wolves as red dots.
         for (const auto& w : game_.worldManager_->getWolves()) {
             if (!w.isAlive()) continue;
 
@@ -164,7 +166,7 @@ void DebugUI::drawMinimapPanel() {
             dl->AddCircleFilled(wm, 4, IM_COL32(255,50,50,255));
         }
 
-        // Sample every 10th tree so the minimap stays readable.
+        // 4. ---Sample every 10th tree so the minimap stays readable.
         int ti = 0;
         for (auto& t : game_.worldManager_->getTrees()) {
             if (++ti % 10) continue;

@@ -4,8 +4,12 @@
 #include "threepp/threepp.hpp"
 #include "CollisionDetection.hpp"
 
+
+// Maps keyboard input (WASD) to movement of a car Object3D, with simple acceleration and collision-aware movement
 class KeyController : public threepp::KeyListener {
 public:
+
+
     KeyController(threepp::Object3D& object, CollisionDetection& collisionDetection,
                   float acceleration = 50.0f, float maxSpeed = 150.0f,
                   float friction = 0.9f, float turnSpeed = 2.0f);
@@ -17,13 +21,16 @@ public:
     float getSpeed() const;
     float getRotation() const;
 
-    // Added: control top speed at runtime
+
     void setMaxSpeed(float maxSpeed);
-    void adjustMaxSpeed(float delta); // positive to increase, negative to decrease
+    void adjustMaxSpeed(float delta);
     float getMaxSpeed() const;
+
 
 private:
     threepp::Object3D* object_;
+
+    // pointer to the collision detection system to manage car movement
     CollisionDetection* collisionDetection_;
     float acceleration_;
     float maxSpeed_;

@@ -23,10 +23,10 @@
 #include <string>
 #include <vector>
 
+// Forward declaration so we can use threepp::Scene in the function signature without including full threepp headers.
 namespace threepp { class Scene; }
 
-// Fast melee enemy that chases the car using a noisy steering behaviour.
-// Each wolf has its own speed, acceleration, and random offset so they don't overlap.
+
 class Wolf {
 public:
     Wolf(std::shared_ptr<threepp::Object3D> mesh,
@@ -34,10 +34,10 @@ public:
          float acceleration,
          threepp::Vector3 offset);
 
-    // Steer towards the target position plus offset, with added noise and drift.
+
     void update(float dt, const threepp::Vector3& targetPos);
 
-    // Apply one hit of damage; wolves speed up when hurt and die after enough hits.
+    // Apply one hit of damage; wolves speed up when hurt and die after enough hits
     void takeDamage();
 
     bool isAlive() const { return alive_; }
@@ -53,15 +53,15 @@ private:
     float acceleration_;
     threepp::Vector3 targetOffset_;
 
-    float noiseOffset_;      // Per-wolf phase offset for the noise functions
-    float timeAlive_ = 0.0f; // Accumulated time for procedural movement
+    float noiseOffset_;
+    float timeAlive_ = 0.0f;
 
     int hits_ = 0;
     bool alive_ = true;
     const int hitsToDie_ = 5;
 };
 
-// Load a wolf model and spawn a number of wolves with stats derived from the difficulty factor.
+// Load a wolf model and spawn a number of wolves with stats from the difficulty factor.
 std::vector<Wolf> createWolves(threepp::Scene& scene, int count, const std::string& modelPath, float difficultyFactor);
 
 #endif //MAPPEOPPGAVE_WOLF_HPP

@@ -1,5 +1,4 @@
 #include "Wolf.hpp"
-#include "GameConstants.hpp"
 #include <threepp/loaders/AssimpLoader.hpp>
 #include <cmath>
 #include "Random.hpp"
@@ -7,36 +6,41 @@
 
 using namespace threepp;
 
+
+//Creating the enemy wolwes that chase the deer
 Wolf::Wolf(std::shared_ptr<Object3D> mesh, float maxSpeed, float acceleration, Vector3 offset)
     : object_(std::move(mesh)), maxSpeed_(maxSpeed), acceleration_(acceleration), targetOffset_(offset)
 {
-    // Initialize with a random phase to desynchronize each wolf's procedural movement.
+    // Randomize the wolf movement later with the noiseOffset_
     noiseOffset_ = rnd::uniform(0.0f, 100.0f);
 }
+
 
 void Wolf::takeDamage() {
     if (!alive_) return;
     hits_++;
 
-    // Wolves get faster/more aggressive each time they are hit.
+    // Wolves get faster each time they are hit to increase game randomness and difficulty.
     maxSpeed_ += 20.0f;
 
+    // If the wolf has taken enough hits, remove it
     if (hits_ >= hitsToDie_) {
         alive_ = false;
         object_->visible = false;
     }
 }
 
+// Update the wolf's position to chase the target with unpredictability trying to mimic natures chaos : )
 void Wolf::update(float dt, const Vector3& targetPos) {
     if (!alive_) return;
 
     timeAlive_ += dt;
 
-    // --- Compute a noisy target position around the car ---
-    // 1. Start at the car position plus a static per-wolf offset.
+
+    // Start at the car position plus a static per-wolf offset
     Vector3 baseTarget = targetPos + targetOffset_;
 
-    // 2. Add fast wobble and slower drift to make the path unpredictable.
+    // Add fast wobble and slower drift to make the path unpredictable.
     float wobbleX = std::sin(timeAlive_ * 2.0f + noiseOffset_) * 20.0f;
     float wobbleZ = std::cos(timeAlive_ * 1.5f + noiseOffset_ * 0.5f) * 20.0f;
     float driftX = std::sin(timeAlive_ * 0.5f) * 50.0f;
@@ -46,13 +50,16 @@ void Wolf::update(float dt, const Vector3& targetPos) {
     finalTarget.x += wobbleX + driftX;
     finalTarget.z += wobbleZ + driftZ;
 
-    // --- Steering behaviour towards the final target ---
+    // Steering behaviour towards the final target
     Vector3 direction = finalTarget - object_->position;
     direction.y = 0;
 
+
+    // Calculate distance to the target
     float dist = direction.length();
 
-    if (dist > 1.0f) { // Don't jitter when very close
+    // reduce jitter when very close
+    if (dist > 1.0f) {
         direction.normalize();
         Vector3 desiredVel = direction * maxSpeed_;
         Vector3 steering = desiredVel - velocity_;
@@ -67,7 +74,7 @@ void Wolf::update(float dt, const Vector3& targetPos) {
 
         object_->position += velocity_ * dt;
 
-        // Rotate the wolf so it faces its direction of travel.
+        // Rotate the wolf so it faces its direction it moves using atan2 to get the angle
         if (velocity_.length() > 0.1f) {
             float targetRotation = std::atan2(velocity_.x, velocity_.z);
             object_->rotation.y = targetRotation;
@@ -75,6 +82,7 @@ void Wolf::update(float dt, const Vector3& targetPos) {
     }
 }
 
+// In much the same way as Bears, loader.load, empty vector, check model and give difficoulty based speed and acceleration
 std::vector<Wolf> createWolves(Scene& scene, int count, const std::string& modelPath, float difficultyFactor) {
     AssimpLoader loader;
     auto model = loader.load(modelPath);
@@ -85,6 +93,8 @@ std::vector<Wolf> createWolves(Scene& scene, int count, const std::string& model
     float baseSpeed = 50.0f + (difficultyFactor - 1) * 40.0f;
     float baseAcc = 150.0f + (difficultyFactor - 1) * 50.0f;
 
+
+    // Clone all the wolwes and add to scene
     for (int i = 0; i < count; ++i) {
         auto wMesh = model->clone();
 
@@ -95,6 +105,8 @@ std::vector<Wolf> createWolves(Scene& scene, int count, const std::string& model
 
         wMesh->scale.set(5.0f, 5.0f, 5.0f);
 
+
+        // enable shadows for all wolwes
         wMesh->traverseType<Mesh>([](Mesh& m){
             m.castShadow = true; m.receiveShadow = true;
         });

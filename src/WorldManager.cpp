@@ -14,16 +14,19 @@ WorldManager::WorldManager(Scene& scene, CollisionDetection& collisionDetection,
                            AssimpLoader& loader, float& blurLevel)
     : scene_(scene), collisionDetection_(collisionDetection), loader_(loader), blurLevel_(blurLevel) {}
 
+// Spawns all the independent world entities based on the provided configuration except for car
 void WorldManager::spawnWorld(const WorldConfig& config) {
     lastConfig_ = config;
     if (!ground_) createGround(Config::WORLD_SIZE);
-
     spawnTrees(config);
     spawnMushrooms(config);
     spawnBears(config);
     spawnWolvesDefault();
 }
 
+
+// Update entities (wolves, bears), sync active bullets into the collision system,
+// then process all collision pairs for this frame.
 void WorldManager::update(float dt, const Vector3& carPos, const std::vector<std::shared_ptr<Bullet>>& bullets) {
     for (auto& wolf : wolves_) wolf.update(dt, carPos);
     for (auto& bear : bears_) bear.update(dt);
@@ -36,24 +39,30 @@ void WorldManager::spawnTrees(const WorldConfig& config) {
     if (!model) return;
 
     trees_.reserve(config.treeCount);
+
+    // Spawn trees at random positions within world bounds
     for (int i = 0; i < config.treeCount; ++i) {
         auto pos = rnd::uniform2(-Config::WORLD_BOUNDS, Config::WORLD_BOUNDS);
         auto clone = model->children[0]->clone();
-
         clone->position.set(pos.first, 65, pos.second);
         clone->scale.set(config.treeScale, config.treeScale, config.treeScale);
 
-        clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
+        //Give trees shadows
+        clone->traverseType<Mesh>([](Mesh& m){
+            m.castShadow = true;
+            m.receiveShadow = true;
+        });
 
         auto tree = std::make_shared<GameObject>(clone);
         scene_.add(tree->getModel());
         trees_.push_back(tree);
 
+        // Register tree collider
         collisionDetection_.addCollider(clone, config.treeCollisionRadius, ColliderType::TREE);
     }
 }
 
-
+// Spawn bears into the scene and register a collision handler so bear–car hits trigger bear logic
 void WorldManager::spawnBears(const WorldConfig& config) {
     bears_ = createBears(scene_, config.bearCount, "Models/Mesh_Bear.obj", config.bearScale);
     for (auto& b : bears_) {
@@ -65,12 +74,15 @@ void WorldManager::spawnBears(const WorldConfig& config) {
     }
 }
 
+
+// Handle a bear collision by triggering the car hit callback when the other collider is the car
 void WorldManager::handleBearLogic(const Collider& otherCollider) {
     if (otherCollider.type == ColliderType::CAR && onBearCollision_) {
         onBearCollision_();
     }
 }
 
+// Spawn the "pack" of wolves based on the current difficulty and register their colliders
 void WorldManager::spawnWolvesDefault() {
     wolves_ = createWolves(scene_, Config::WOLF_COUNT_BASE, "Models/wolf/model.obj", (float)difficultyLevel_);
     for (auto& w : wolves_) {
@@ -84,21 +96,23 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
     if (!model) return;
 
     mushrooms_.reserve(config.mushroomCount);
+
     for (int i = 0; i < config.mushroomCount; ++i) {
         auto pos = rnd::uniform2(-Config::WORLD_BOUNDS, Config::WORLD_BOUNDS);
+
+        // Clone the base mushroom mesh so each instance has its own transform.
         auto clone = model->children[0]->clone();
         clone->position.set(pos.first, -4, pos.second);
         clone->scale.set(config.mushroomScale, config.mushroomScale, config.mushroomScale);
 
-        clone->traverseType<Mesh>([](Mesh& m){ m.castShadow = true; m.receiveShadow = true; });
-
         auto gameObj = std::make_shared<GameObject>(clone);
 
+        // When this mushroom is hit, increase blur level (clamped to MAX_BLUR).
         gameObj->setOnCollision([this](GameObject&) {
             blurLevel_ = std::min(blurLevel_ + 3.0f, Config::MAX_BLUR);
         });
 
-
+        // Register a collider that routes mushroom hits to handleMushroomLogic
         collisionDetection_.addCollider(clone, config.mushroomCollisionRadius, ColliderType::MUSHROOM,
             [this](const Collider& self, const Collider& other){
                 this->handleMushroomLogic(self, other);
@@ -109,7 +123,8 @@ void WorldManager::spawnMushrooms(const WorldConfig& config) {
     }
 }
 
-
+// When a mushroom collides with the car apply blur and speed increase, remove it from the scene,
+// and remove the global mushroom collision callback
 void WorldManager::handleMushroomLogic(const Collider& mushroomCollider, const Collider& otherCollider) {
     if (otherCollider.type != ColliderType::CAR) return;
 
@@ -127,6 +142,9 @@ void WorldManager::handleMushroomLogic(const Collider& mushroomCollider, const C
     }
 }
 
+// Needed some AI to solve this one
+// Register any new alive bullets with the collision system once.
+// on bullet–wolf hits, damage the wolf and hide the bullet
 void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bullets) {
     for (const auto& bullet : bullets) {
         if (!bullet->isAlive()) continue;
@@ -144,6 +162,8 @@ void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bulle
     }
 }
 
+
+// Find the wolf whose model matches the hit mesh and apply one hit of damage to it
 void WorldManager::handleBulletWolfCollision(threepp::Object3D* wolfMesh) {
     for (auto& w : wolves_) {
         if (w.getModel().get() == wolfMesh && w.isAlive()) {
@@ -153,6 +173,7 @@ void WorldManager::handleBulletWolfCollision(threepp::Object3D* wolfMesh) {
     }
 }
 
+// Create the ground_ plane and enable it to receive shadows
 void WorldManager::createGround(float groundsize) {
     auto geometry = PlaneGeometry::create(groundsize, groundsize);
     geometry->rotateX(-math::PI / 2);
@@ -164,6 +185,9 @@ void WorldManager::createGround(float groundsize) {
     scene_.add(ground_);
 }
 
+
+// Add a large sky dome with a shader material that simulates atmospheric scattering
+// Most of this code is adapted from threepp examples found with DeepWiki
 void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
     sky_ = Sky::create();
     sky_->scale.set(50000, 50000, 50000);
@@ -192,6 +216,7 @@ void WorldManager::addSkyAndSun(float elevationDeg, float azimuthDeg) {
     scene_.add(sky_);
 }
 
+// Keep the sky dome centered on the camera
 void WorldManager::updateSkyPosition(const Vector3& cameraPos) {
     if (sky_) {
         Vector3 p = cameraPos;
@@ -200,6 +225,8 @@ void WorldManager::updateSkyPosition(const Vector3& cameraPos) {
     }
 }
 
+// Clear all dynamic entities and their colliders, reset blur/bullet state,
+// then respawn mushrooms, bears, and wolves using the last world config
 void WorldManager::resetDynamicEntities() {
     removeMushrooms();
     removeBears();
@@ -218,6 +245,7 @@ void WorldManager::resetDynamicEntities() {
     spawnWolvesDefault();
 }
 
+// Remove all mushrooms, bears, and wolves from the scene and clear their lists
 void WorldManager::removeMushrooms() {
     for(auto& m : mushrooms_) if(m) m->removeFromScene(scene_);
     mushrooms_.clear();
@@ -231,17 +259,21 @@ void WorldManager::removeWolves() {
     wolves_.clear();
 }
 
+// Accessors
 const std::vector<Wolf>& WorldManager::getWolves() const { return wolves_; }
 const std::vector<std::shared_ptr<GameObject>>& WorldManager::getTrees() const { return trees_; }
 
+// Returns true if no wolves are still alive
 bool WorldManager::allWolvesDead() const {
     for(const auto& w : wolves_) if(w.isAlive()) return false;
     return true;
 }
+
 void WorldManager::setDifficultyLevel(int level) {
     difficultyLevel_ = std::clamp(level, 1, 3);
 }
 
+// Register the car object with a collider that triggers the provided callback on wolf collisions
 void WorldManager::registerCar(const std::shared_ptr<threepp::Object3D>& car, float radius, std::function<void()> onWolfCollision) {
     collisionDetection_.addCollider(car, radius, ColliderType::CAR,
         [onWolfCollision](const Collider&, const Collider& other){
@@ -249,5 +281,6 @@ void WorldManager::registerCar(const std::shared_ptr<threepp::Object3D>& car, fl
         });
 }
 
+// Set the bear and mushroom collision callbacks
 void WorldManager::setBearCollisionHandler(std::function<void()> handler) { onBearCollision_ = std::move(handler); }
 void WorldManager::setMushroomCollisionHandler(std::function<void()> handler) { onMushroomCollision_ = std::move(handler); }

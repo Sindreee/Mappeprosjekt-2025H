@@ -22,7 +22,8 @@ Car::Car() {
         skateboardModel->position.set(0, -65.0f, 0);
         if (deerModel_) deerModel_->add(skateboardModel);
 
-        // Predefined local X/Z offsets for the four wheels.
+        // Predefined local X/Z offsets for the four wheels
+        // Given their repetetive behaviour this was easier than placing individually
         std::vector<std::pair<int, std::pair<float, float>>> wheelPos = {
             {0, {70, 70}}, {1, {-70, 70}}, {2, {70, -70}}, {3, {-70, -70}}
         };
@@ -39,13 +40,14 @@ Car::Car() {
         }
     }
 
-    // Enable shadow casting/receiving on all meshes in the hierarchy.
+    // Enable shadow casting/receiving on all meshes in the hierarchy instead of individually
     group_->traverseType<threepp::Mesh>([](threepp::Mesh& mesh) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
     });
 }
 
+// Dont move car if dead or falling
 void Car::setSpeed(float speed) {
     if (isDead()) {
         currentSpeed_ = 0.0f;
@@ -56,6 +58,7 @@ void Car::setSpeed(float speed) {
     }
 }
 
+// Dont rotate car if dead or falling
 void Car::setRotation(float rotation) {
     if (!isFalling_ && !isDead()) {
         currentRotation_ = rotation;
@@ -66,6 +69,7 @@ void Car::applySpeedBoost(float extraSpeed) {
     speedBoost_ = extraSpeed;
 }
 
+// Apply a permanent modification to the base speed and clamp to a minimum value
 void Car::modifyBaseSpeed(float delta) {
     baseSpeed_ += delta;
     if (baseSpeed_ < 30.0f) baseSpeed_ = 30.0f;
@@ -75,10 +79,12 @@ float Car::getMaxSpeed() const {
     return baseSpeed_ + speedBoost_;
 }
 
+
+// Damage system for car with terminal ouput mainly for development purposeses and post game information
 void Car::takeDamage(int amount) {
     if (hitCooldownTimer_ > 0.0f || isDead()) return;
-
     health_ -= amount;
+    // Bring in CAR_HIT_COOLDOWN from gameConstants for better program tuning control
     hitCooldownTimer_ = Config::CAR_HIT_COOLDOWN;
     std::cout << "Car hit! Health: " << health_ << "/" << Config::CAR_MAX_HEALTH << std::endl;
 
@@ -110,6 +116,7 @@ void Car::updateWheels(float dt) {
     if (wheels_[3]) wheels_[3]->rotation.x -= (speedRotation + turnRotation);
 }
 
+// Check if the car is out of bounds and apply gravity if so for falling effect
 void Car::checkBoundsAndGravity(float dt) {
     auto pos = group_->position;
     float limit = Config::WORLD_BOUNDS;
@@ -117,13 +124,12 @@ void Car::checkBoundsAndGravity(float dt) {
     bool outOfBounds = (pos.x < -limit || pos.x > limit || pos.z < -limit || pos.z > limit);
 
     if (outOfBounds) {
-        // When the car leaves the playable area, it starts falling down under gravity.
         isFalling_ = true;
         fallVelocityY_ -= Config::GRAVITY * dt;
         group_->position.y += fallVelocityY_ * dt;
 
         // Once it falls far enough, the car is considered destroyed.
-        if (pos.y < -100.0f) {
+        if (pos.y < -70.0f) {
             health_ = 0;
         }
     } else {
@@ -134,6 +140,8 @@ void Car::checkBoundsAndGravity(float dt) {
     }
 }
 
+
+// Reset all car parameters to initial state when restarting the game in game.cpp
 void Car::reset() {
     group_->position.copy(spawnPos_);
     group_->rotation.set(0,0,0);

@@ -6,7 +6,7 @@
 #include <functional>
 #include <memory>
 
-// Types of colliders used by the simple 2D (XZ-plane) collision system.
+// Types of colliders used by the simple 2D (XZ-plane) collision system
 enum class ColliderType {
     CAR,
     TREE,
@@ -16,7 +16,7 @@ enum class ColliderType {
     BULLET
 };
 
-// Lightweight handle describing a collidable object in the world.
+// Lightweight handle describing a collidable object in the world
 struct Collider {
     std::shared_ptr<threepp::Object3D> object;       // Scene object to test against
     float radius = 0.0f;                             // Collision radius in world units
@@ -25,16 +25,13 @@ struct Collider {
     std::function<void(const Collider&, const Collider&)> onCollision; // Optional hit callback
 };
 
-// Very simple broad-phase + narrow-phase collision manager.
-//
-// - Uses sphere checks in the XZ-plane only (Y is ignored).
-// - Supports registration of colliders with callbacks.
-// - The game decides which type pairs to test via processAllPairs().
+// Simple XZ-plane sphere-based collision manager with callback-enabled colliders
+// the game selects which collider-type pairs to test in processAllPairs().
 class CollisionDetection {
 public:
     CollisionDetection() = default;
 
-    // Register a new collider around an Object3D and return its index.
+    // Register a new collider around an Object3D and return its index
     int addCollider(std::shared_ptr<threepp::Object3D> object,
                     float radius,
                     ColliderType type,

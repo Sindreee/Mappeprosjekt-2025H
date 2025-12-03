@@ -1,7 +1,8 @@
 #include "CollisionDetection.hpp"
-#include <cmath>
 #include <algorithm>
 
+// Parts of the technical execution in this was made with AI especially the lambda function wich is partially fased out now for simplicity
+// Register a new collider and return its index in the internal collider list
 int CollisionDetection::addCollider(std::shared_ptr<threepp::Object3D> object,
                                     float radius,
                                     ColliderType type,
@@ -32,20 +33,23 @@ bool CollisionDetection::isBlocked(const threepp::Vector3& position, float check
     return false;
 }
 
+// Deactivate all colliders of the specified type
 void CollisionDetection::removeCollidersOfType(ColliderType type) {
     for (auto& c : colliders_) {
         if (c.type == type) c.active = false;
     }
 }
 
+// Remove all inactive colliders from the internal list
 void CollisionDetection::cleanupInactive() {
     colliders_.erase(
         std::remove_if(colliders_.begin(), colliders_.end(), [](const Collider& c){ return !c.active; }),
         colliders_.end());
 }
 
+// Process collisions between all colliders of type A and type B
 void CollisionDetection::processTypePair(ColliderType a, ColliderType b) {
-    // Test all active colliders of type A against all active colliders of type B.
+
     // For each overlap we invoke both collider callbacks (if provided).
     for (size_t i = 0; i < colliders_.size(); ++i) {
         if (!colliders_[i].active || colliders_[i].type != a) continue;
