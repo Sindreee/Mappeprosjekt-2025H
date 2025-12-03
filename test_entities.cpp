@@ -1,4 +1,3 @@
-// test_entities.cpp
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <threepp/threepp.hpp>
@@ -7,6 +6,8 @@
 #include "Wolf.hpp"
 #include "Bear.hpp"
 #include "GameConstants.hpp"
+
+// The majority of catch2 tests in this project is written by AI. However, I have made structural adjustments to ensure they tests fit the program
 
 // --- TEST: Car ---
 TEST_CASE("Car Gameplay Logic", "[Car]") {

@@ -79,10 +79,10 @@ target_link_libraries(Tests PRIVATE MappeoppgaveLib Catch2::Catch2WithMain)
 include(CTest)
 add_test(NAME unit_tests COMMAND Tests)
 
-# this makes the models be next to the .exe file
+
 add_custom_command(TARGET Mappeoppgave POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/Models
         $<TARGET_FILE_DIR:Mappeoppgave>/Models
-        COMMENT "Kopierer Models-mappen til output-mappen..."
+        COMMENT "Copies the Models-folder to the output-folder..."
 )

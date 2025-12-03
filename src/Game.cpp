@@ -5,7 +5,7 @@
 using namespace threepp;
 
 Game::Game()
-    : canvas_("Automation Deer 2026"),
+    : canvas_("Automation Deer"),
       renderer_(canvas_.size()),
       scene_(Scene::create()),
       camera_(PerspectiveCamera::create(75, canvas_.aspect(), 0.1f, 1000)),

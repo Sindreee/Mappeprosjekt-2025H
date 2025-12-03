@@ -1,6 +1,4 @@
-# src/CMakeLists.txt
 
-# add the src files to MappeoppgaveLib
 add_library(MappeoppgaveLib
         car.cpp
         carKeyController.cpp

@@ -14,17 +14,17 @@ Bullet::Bullet(const std::string& modelPath, const Vector3& startPos,
     model_ = loader.load(modelPath);
 
 
-    // Only run if model loaded sucessfully
+
     if (model_) {
 
-        // Place the bullet on startPos (inside the turret) and size it properly
-        model_->scale.set(0.4f, 0.4f, 0.4f);
+        // Place the bullet on startPos (inside the turret) and size it down
+        model_->scale.set(0.3f, 0.3f, 0.3f);
         model_->position.copy(startPos);
 
-        //rotate the bulet to face the same direction as the turret
+
         model_->rotation.y = rotation + math::PI;
 
-        // Compute a normalized velocity vector in world space and scale by speed.
+        // Compute a normalized velocity vector in world space and scale by speed
         velocity_ = direction;
         velocity_.normalize();
         velocity_.multiplyScalar(speed);
@@ -45,7 +45,7 @@ void Bullet::update(float dt) {
 
 // Helper to check if the bullet is still alive
 bool Bullet::isAlive() const {
-    return elapsed_ < lifetime_ && model_ != nullptr;
+    return elapsed_ < lifetime_ && model_->visible;
 }
 
 // Access the underlying Threepp object for bullet

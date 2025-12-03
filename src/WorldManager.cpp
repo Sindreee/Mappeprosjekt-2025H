@@ -142,9 +142,7 @@ void WorldManager::handleMushroomLogic(const Collider& mushroomCollider, const C
     }
 }
 
-// Needed some AI to solve this one
-// Register any new alive bullets with the collision system once.
-// on bullet–wolf hits, damage the wolf and hide the bullet
+// Synchronize bullet colliders with active entities
 void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bullets) {
     for (const auto& bullet : bullets) {
         if (!bullet->isAlive()) continue;
@@ -153,9 +151,13 @@ void WorldManager::syncBullets(const std::vector<std::shared_ptr<Bullet>>& bulle
         if (registeredBullets_.insert(ptr).second) {
             collisionDetection_.addCollider(bullet->getModel(), 5.0f, ColliderType::BULLET,
                 [this](const Collider& b, const Collider& other){
+
+                    // check if the bullet is still visible
+                    if (!b.object->visible) return;
+
                     if (other.type == ColliderType::WOLF) {
                         handleBulletWolfCollision(other.object.get());
-                        b.object->visible = false;
+                        b.object->visible = false; // make the bullet invisible and mark it as used
                     }
                 });
         }

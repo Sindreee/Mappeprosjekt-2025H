@@ -1,7 +1,7 @@
 #include "CollisionDetection.hpp"
 #include <algorithm>
 
-// Parts of the technical execution in this was made with AI especially the lambda function wich is partially fased out now for simplicity
+// Parts of the technical execution for the collisionDetection was made with AI
 // Register a new collider and return its index in the internal collider list
 int CollisionDetection::addCollider(std::shared_ptr<threepp::Object3D> object,
                                     float radius,

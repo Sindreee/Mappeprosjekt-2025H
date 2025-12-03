@@ -29,4 +29,4 @@ private:
     CollisionCallback onCollision_;
 };
 
-#endif // GAMEOBJECT_HPP
+#endif

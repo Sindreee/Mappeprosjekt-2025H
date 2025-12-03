@@ -1,21 +1,3 @@
-//
-// Wolf.hpp
-//
-// This file defines the Wolf class, which represents a fast melee enemy in the game.
-// Wolves chase the player (or car) using a noisy steering behavior, making them dynamic
-// and unpredictable opponents. Each wolf has individual speed, acceleration, and a random
-// offset to prevent them from overlapping in their movements.
-//
-// The Wolf class includes methods for updating the wolf's position, applying damage,
-// and retrieving the wolf's current state (alive, number of hits, model object).
-//
-// Additionally, there is a createWolves function declared, which is used to load a wolf
-// model and spawn a specified number of wolves with attributes derived from a given
-// difficulty factor.
-//
-// Created by sindr on 11/18/2025.
-//
-
 #ifndef MAPPEOPPGAVE_WOLF_HPP
 #define MAPPEOPPGAVE_WOLF_HPP
 #include <threepp/threepp.hpp>

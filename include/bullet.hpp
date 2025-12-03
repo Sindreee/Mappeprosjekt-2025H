@@ -21,16 +21,13 @@ public:
     // Expiration accumulation and position update
     void update(float dt);
 
-    // checks if it is alive
     bool isAlive() const;
 
-    // get the threepp object for the bullet
     std::shared_ptr<threepp::Object3D> getModel() const;
 
-    // Gets the current position of the bullet
     threepp::Vector3 getPosition() const;
 
-    // Private members for model, velocity, lifetime, and elapsed time
+
 private:
     std::shared_ptr<threepp::Object3D> model_;
     threepp::Vector3 velocity_;
